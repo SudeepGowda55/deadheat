@@ -52,17 +52,27 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
   drive = kaneRun, launch = launchChrome, shoot = screenshot } = {}) {
   if (race.users?.length !== 2) throw new Error(`Race "${race.name}" needs exactly two users`)
   const t0 = Date.now(), timeline = [], errors = []
-  const log = event => { const e = { t: (Date.now() - t0) / 1000, ...event }; timeline.push(e); emit(e) }
+  let lanes = []
+  const log = event => {
+    const e = { t: (Date.now() - t0) / 1000, ...event }
+    timeline.push(e); emit(e)
+  }
   if (out) mkdirSync(out, { recursive: true })
   const names = race.users.map(u => u.name)
   const matches = matcher(race.hold)
   let armed = false
   const proxy = startProxy({ upstream: app.url, lanes: names.map((name, i) => ({ name, port: ports[i] })), hold: req => armed && matches(req),
-    order: order === 'together' ? 'together' : order === 'first-then-second' ? names : [...names].reverse(), log })
+    order: order === 'together' ? 'together' : order === 'first-then-second' ? names : [...names].reverse(), log,
+    beforeRelease: () => Promise.race([Promise.all(lanes.map(lane => picture(lane, 'frozen'))), new Promise(r => setTimeout(r, 1500))]) })
   const chromes = await Promise.all(chromePorts.map(port => launch(port, { headless })))
-  const lanes = race.users.map((user, i) => ({ user, origin: `http://127.0.0.1:${ports[i]}`, chrome: chromes[i] }))
+  lanes = race.users.map((user, i) => ({ user, origin: `http://127.0.0.1:${ports[i]}`, chrome: chromes[i] }))
   const step = lane => s => log({ event: 'step', lane: lane.user.name, status: s.status, remark: s.remark })
-  const picture = (lane, tag) => out ? shoot(lane.chrome.endpoint, join(out, `${order}-${lane.user.name}-${tag}.png`)).catch(() => null) : null
+  const shots = []
+  const picture = async (lane, tag) => {
+    const t = (Date.now() - t0) / 1000
+    const file = out ? await shoot(lane.chrome.endpoint, join(out, `${order}-${lane.user.name}-${tag}.jpg`)).catch(() => null) : null
+    if (file) shots.push({ lane: lane.user.name, tag, t, file })
+  }
   const run = async (lane, phase, objective, startUrl) => {
     log({ event: 'kane', lane: lane.user.name, phase, objective })
     const r = await drive(objective, { url: startUrl, cdpEndpoint: lane.chrome.endpoint, onStep: step(lane) })
@@ -95,7 +105,7 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
     const invariant = whole ? whole.status === 'passed' : null
     const credits = timeline.reduce((sum, e) => sum + (e.event === 'kane_end' ? Number(e.credits) || 0 : 0), 0)
     const result = { race: race.name, order, verdict: verdict({ held, users, invariant, errors }), held: Boolean(held), users, invariant,
-      invariantSummary: whole?.summary ?? null, errors, credits, seconds: (Date.now() - t0) / 1000, timeline }
+      invariantSummary: whole?.summary ?? null, errors, credits, seconds: (Date.now() - t0) / 1000, timeline, shots }
     log({ event: 'verdict', order, verdict: result.verdict })
     return result
   } finally {

@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dead Heat report</title>
+<meta name="description" content="Two real users saved at the same instant. This report shows what each was told and what the app actually kept.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%238e9399'/%3E%3Crect x='3' y='8' width='26' height='5' fill='%23101113'/%3E%3Crect x='3' y='19' width='26' height='5' fill='%23fff'/%3E%3Crect x='15' y='2' width='2' height='28' fill='%23ff2d1a'/%3E%3C/svg%3E">
+<!-- Fonts are an enhancement: the page is complete offline with the fallbacks below. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=B612+Mono:wght@400;700&family=Kanit:ital,wght@1,800&family=Public+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+@property --p { syntax: '<percentage>'; inherits: true; initial-value: 100%; }
+:root {
+  --grey: #8e9399; --ink: #101113; --white: #fff; --line: #ff2d1a; --soft: rgba(16,17,19,.62); --dot: 1.1px;
+  --display: 'Kanit', 'Arial Black', Impact, sans-serif; --text: 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'B612 Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html { background: var(--grey); }
+body { margin: 0; overflow-x: clip; color: var(--ink); font: 400 16px/1.55 var(--text); -webkit-font-smoothing: antialiased; }
+/* Newsprint halftone. The dots swell while the page is scrolled fast, like a slow shutter. */
+body::before { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(circle, rgba(16,17,19,.2) var(--dot), transparent calc(var(--dot) + .6px)) 0 0 / 7px 7px; }
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+.mono { font-family: var(--mono); font-size: .78rem; letter-spacing: 0; }
+
+.bar { height: 56px; display: flex; align-items: center; gap: 18px; padding: 0 clamp(16px, 3vw, 40px); }
+.mark { display: flex; align-items: center; gap: 10px; font: italic 800 1.25rem/1 var(--display); text-decoration: none; }
+.mark i { display: grid; gap: 3px; width: 26px; position: relative; }
+.mark i::before, .mark i::after { content: ''; height: 5px; background: var(--ink); }
+.mark i::after { background: var(--white); }
+.mark i b { position: absolute; left: 12px; top: -4px; bottom: -4px; width: 2px; background: var(--line); }
+.bar .where { margin-left: auto; text-align: right; color: var(--soft); }
+.gh { width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(16,17,19,.45); display: grid; place-items: center; color: var(--soft); transition: color .2s, border-color .2s, background .2s; }
+.gh:hover { color: var(--white); background: var(--ink); border-color: var(--ink); }
+
+/* The race itself: pinned while scrolling drags time forward. */
+.race { height: 340vh; }
+.stage { position: sticky; top: 0; height: 100vh; min-height: 620px; display: grid; grid-template-rows: 56px auto minmax(0, 1fr) auto auto; mask-image: linear-gradient(90deg, #000 var(--p), transparent var(--p)); -webkit-mask-image: linear-gradient(90deg, #000 var(--p), transparent var(--p)); }
+.head { display: flex; align-items: flex-end; gap: 24px; padding: 2px clamp(16px, 3vw, 40px) 14px; }
+h1 { margin: 0; font: italic 800 clamp(1.9rem, 4.4vw, 4.1rem)/1.14 var(--display); letter-spacing: -.02em; }
+h1 .l { display: inline-block; transform-origin: 0 60%; }
+h1 .l.in { animation: smear .7s cubic-bezier(.16,.9,.2,1) both; animation-delay: calc(var(--i) * 26ms); }
+h1 mark { background: var(--white); color: var(--ink); padding: 0 .16em; margin: 0 -.04em; line-height: 1; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+h1 mark.bad { background: var(--ink); color: var(--white); }
+/* Slow things look stretched in a photo-finish picture; the letters arrive that way and settle. */
+@keyframes smear { from { opacity: 0; transform: translateX(-.7em) scaleX(2.8) skewX(-20deg); } 60% { opacity: 1; } to { opacity: 1; transform: none; } }
+.orders { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding-bottom: 6px; }
+.chip { border: 1.5px solid var(--ink); background: transparent; padding: 7px 12px 6px; cursor: pointer; font-family: var(--mono); font-size: .74rem; display: flex; align-items: center; gap: 8px; position: relative; overflow: hidden; transition: transform .25s cubic-bezier(.2,.9,.2,1), background .2s, color .2s; }
+.chip::before { content: ''; width: 9px; height: 9px; background: var(--white); border: 1.5px solid var(--ink); }
+.chip.bad::before { background: var(--line); }
+.chip[aria-pressed=true] { background: var(--ink); color: var(--white); }
+.chip:active { transform: scale(.96); }
+.burst { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .5; pointer-events: none; animation: burst .5s ease-out forwards; }
+@keyframes burst { to { transform: scale(18); opacity: 0; } }
+
+.screens { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 0 clamp(16px, 3vw, 40px); min-height: 0; }
+.lane { position: relative; min-height: 0; display: grid; grid-template-columns: 34px minmax(0, 1fr); }
+.lane + .lane { grid-template-columns: minmax(0, 1fr) 34px; border-left: 4px solid var(--white); }
+.lane + .lane .who { order: 2; }
+/* Lane names are painted along the edge, the way they are on a track. */
+.who { writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; font: italic 800 1.15rem/34px var(--display); color: var(--white); background: var(--ink); }
+.lane + .lane .who { transform: none; }
+.shot { position: relative; background: var(--ink); overflow: hidden; min-height: 0; }
+.shot img, .shot canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 0 0; }
+.shot img { transition: opacity .35s; }
+.shot .none { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.6); font-family: var(--mono); font-size: .8rem; }
+.tag { position: absolute; left: 0; top: 0; background: var(--ink); color: var(--white); padding: 5px 10px 4px; font-family: var(--mono); font-size: .72rem; }
+.plate { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 10px; font: italic 800 clamp(1.2rem, 2.4vw, 2.1rem)/1 var(--display); background: var(--white); transform: translateY(102%); transition: transform .55s cubic-bezier(.2,.9,.2,1); }
+.plate small { display: block; margin-top: 6px; font: 400 .82rem/1.35 var(--text); }
+.plate.lost { background: var(--ink); color: var(--white); border-top: 4px solid var(--line); }
+.plate.refused { background: repeating-linear-gradient(135deg, #fff 0 9px, #dcdfe2 9px 18px); }
+.plate.on { transform: none; }
+
+.track { position: relative; margin: 0 clamp(16px, 3vw, 40px) 0 calc(clamp(16px, 3vw, 40px) + 78px); padding: 26px 0 8px; touch-action: none; cursor: ew-resize; user-select: none; -webkit-user-select: none; }
+.ruler { position: absolute; left: 0; right: 0; top: 4px; height: 18px; }
+.ruler span { position: absolute; top: 0; transform: translateX(-50%); font-family: var(--mono); font-size: .66rem; color: var(--soft); }
+.ruler span::after { content: ''; position: absolute; left: 50%; top: 15px; width: 1px; height: 6px; background: var(--soft); }
+.row { position: relative; height: 22px; border-top: 1px solid rgba(16,17,19,.35); }
+.row:last-of-type { border-bottom: 1px solid rgba(16,17,19,.35); }
+.row b { position: absolute; left: -78px; width: 70px; top: 3px; overflow: hidden; text-overflow: ellipsis; text-align: right; font: 400 .68rem/16px var(--mono); }
+.seg { position: absolute; top: 5px; height: 11px; border: 1.5px solid var(--ink); }
+.seg.frozen { background: var(--ink); }
+.seg.kept { border-style: dashed; }
+.finish { position: absolute; top: 20px; bottom: 6px; width: 2px; background: var(--line); }
+.finish::after { content: attr(data-label); position: absolute; left: 6px; bottom: 100%; white-space: nowrap; font-family: var(--mono); font-size: .68rem; color: var(--line); background: var(--grey); padding: 0 4px; }
+.finish.flip::after { left: auto; right: 6px; }
+.now { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--white); box-shadow: 0 0 0 1px var(--ink); }
+.now::after { content: attr(data-t); position: absolute; top: 0; left: 50%; transform: translateX(var(--tag, -50%)); background: var(--ink); color: var(--white); font-family: var(--mono); font-size: .68rem; padding: 2px 6px 1px; white-space: nowrap; }
+.track input { position: absolute; opacity: 0; pointer-events: none; }
+.caption { display: flex; gap: 16px; align-items: baseline; padding: 4px clamp(16px, 3vw, 40px) 18px; min-height: 58px; }
+.caption p { margin: 0; font-size: 1.02rem; max-width: 70ch; }
+.caption .hint { margin-left: auto; color: var(--soft); white-space: nowrap; }
+
+/* The slit that re-exposes the page when another order is chosen. */
+.slit { position: fixed; top: 0; bottom: 0; left: var(--p); width: 3px; background: var(--white); box-shadow: 3px 0 0 var(--line); opacity: 0; pointer-events: none; z-index: 20; }
+.slit span { position: absolute; top: 50%; left: 14px; white-space: nowrap; background: var(--ink); color: var(--white); padding: 5px 9px 4px; font-family: var(--mono); font-size: .72rem; }
+.exposing .slit { opacity: 1; }
+html.exposing { transition: --p .42s cubic-bezier(.6,0,.3,1); }
+main { mask-image: linear-gradient(90deg, #000 var(--p), transparent var(--p)); -webkit-mask-image: linear-gradient(90deg, #000 var(--p), transparent var(--p)); }
+
+main { padding: 0 clamp(16px, 3vw, 40px) 80px; }
+section { padding-top: 72px; }
+h2 { margin: 0 0 20px; font: italic 800 clamp(1.6rem, 3.2vw, 2.6rem)/1 var(--display); letter-spacing: -.01em; }
+.reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s, transform .6s cubic-bezier(.2,.9,.2,1); }
+.reveal.seen { opacity: 1; transform: none; }
+.rulings { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+.ruling { background: var(--white); padding: 22px 24px 20px; border-top: 6px solid var(--ink); }
+.ruling + .ruling { border-left: 4px solid var(--grey); }
+.ruling.lost { border-top-color: var(--line); }
+.ruling h3 { margin: 0 0 14px; font: italic 800 1.5rem/1 var(--display); display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.ruling h3 span { font: 400 .74rem/1 var(--mono); padding: 5px 8px 4px; border: 1.5px solid var(--ink); white-space: nowrap; }
+.ruling.lost h3 span { background: var(--ink); color: var(--white); }
+.ruling dl { margin: 0; display: grid; grid-template-columns: 9.5em 1fr; gap: 8px 14px; font-size: .95rem; }
+.ruling dt { color: var(--soft); }
+.ruling dd { margin: 0; }
+.ruling q { quotes: '“' '”'; font-weight: 600; }
+table { width: 100%; border-collapse: collapse; background: var(--white); font-size: .93rem; }
+th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid #d5d8dc; vertical-align: top; }
+th { font: 400 .72rem/1.2 var(--mono); color: var(--soft); background: #eceef0; }
+tbody tr { cursor: pointer; transition: background .15s; }
+tbody tr:hover, tbody tr:focus-visible { background: #f1f2f4; outline: none; }
+tbody tr[aria-current=true] td:first-child { box-shadow: inset 5px 0 0 var(--ink); }
+td .v { font-family: var(--mono); font-size: .76rem; padding: 3px 7px 2px; border: 1.5px solid var(--ink); white-space: nowrap; }
+td .v.bad { background: var(--ink); color: var(--white); }
+.wide { overflow-x: auto; }
+pre { margin: 0; background: var(--ink); color: #e9ebee; padding: 18px 20px; overflow-x: auto; font: 400 .78rem/1.7 var(--mono); }
+pre em { color: var(--line); font-style: normal; }
+.next { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+.next p { margin: 0 0 12px; max-width: 56ch; }
+footer { padding: 26px clamp(16px, 3vw, 40px) 36px; color: var(--soft); display: flex; flex-wrap: wrap; gap: 8px 24px; border-top: 1px solid rgba(16,17,19,.35); }
+
+/* Pointer: a printer's loupe over the halftone. */
+.loupe { position: fixed; left: 0; top: 0; width: 74px; height: 74px; margin: -37px 0 0 -37px; border-radius: 50%; border: 1.5px solid var(--ink); pointer-events: none; z-index: 30; opacity: 0;
+  background: radial-gradient(circle, rgba(16,17,19,.3) 2.6px, transparent 3.3px) 0 0 / 14px 14px; transition: width .2s, height .2s, margin .2s, border-color .2s, opacity .2s; }
+.loupe::after { content: ''; position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px; background: var(--line); border-radius: 50%; }
+.loupe.hot { width: 46px; height: 46px; margin: -23px 0 0 -23px; border-color: var(--line); background: none; }
+.loupe.down { width: 30px; height: 30px; margin: -15px 0 0 -15px; }
+@media (hover: hover) and (pointer: fine) { .loupe.live { opacity: 1; } body, a, button, tbody tr, .track { cursor: none; } }
+
+@media (max-width: 760px) {
+  .race { height: auto; }
+  .stage { position: static; height: auto; min-height: 0; display: block; }
+  .head { display: block; padding-top: 8px; }
+  .orders { justify-content: flex-start; margin: 14px 0 0; }
+  .screens { grid-template-columns: 1fr; gap: 10px; }
+  .lane, .lane + .lane { grid-template-columns: 30px minmax(0, 1fr); border-left: 0; }
+  .lane + .lane .who { order: 0; transform: rotate(180deg); }
+  .shot { aspect-ratio: 16 / 10; }
+  .track { margin-top: 14px; margin-left: calc(clamp(16px, 3vw, 40px) + 62px); }
+  .row b { left: -62px; width: 56px; }
+  .caption { display: block; }
+  .caption .hint { display: none; }
+  .rulings, .next { grid-template-columns: 1fr; }
+  .ruling + .ruling { border-left: 0; margin-top: 10px; }
+  .ruling dl { grid-template-columns: 1fr; gap: 2px; }
+  .ruling dd { margin-bottom: 8px; }
+  .bar .where { display: none; }
+  .gh { margin-left: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  h1 .l.in { animation: none; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .plate, .shot img, html.exposing { transition: none; }
+}
+</style>
+</head>
+<body>
+<div class="race" id="race">
+  <div class="stage" id="stage">
+    <header class="bar">
+      <a class="mark" href="#top" aria-label="Dead Heat"><i><b></b></i>Dead Heat</a>
+      <div class="where mono" id="where"></div>
+      <a class="gh" id="gh" target="_blank" rel="noreferrer" aria-label="GitHub repository" data-hot>
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8"/></svg>
+      </a>
+    </header>
+    <div class="head">
+      <h1 id="verdict" aria-live="polite"></h1>
+      <div class="orders" id="orders" role="group" aria-label="Order the saves were released in"></div>
+    </div>
+    <div class="screens" id="screens" aria-label="What each user's browser showed"></div>
+    <div class="track" id="track" aria-label="Race timeline">
+      <div class="ruler" id="ruler"></div>
+      <div id="rows"></div>
+      <div class="finish" id="finish"></div>
+      <div class="now" id="now"></div>
+      <input type="range" id="time" min="0" max="1000" value="1000" aria-label="Race time">
+    </div>
+    <div class="caption"><p id="caption"></p><span class="hint mono" id="hint">scroll or drag the white line</span></div>
+  </div>
+</div>
+<main id="more">
+  <section><h2 class="reveal">What each user was told</h2><div class="rulings" id="rulings"></div></section>
+  <section><h2 class="reveal">Every order that was raced</h2><div class="wide reveal"><table><thead><tr><th>Released</th><th>Verdict</th><th id="thA"></th><th id="thB"></th><th>Kane CLI credits</th><th>Seconds</th></tr></thead><tbody id="table"></tbody></table></div></section>
+  <section><h2 class="reveal">At the proxy</h2><pre class="reveal" id="tape"></pre></section>
+  <section class="next"><div class="reveal"><h2>Run it again</h2><p>The race is described in plain English in <code class="mono">deadheat.json</code>. Kane CLI drives both browsers; Dead Heat freezes the two saves and decides when they land.</p><pre>deadheat race
+deadheat race --orders together --headed</pre></div>
+  <div class="reveal"><h2>Hand it to your agent</h2><p>The failure goes to your coding agent as a brief. The app is restarted and every order is raced again until nobody loses silently.</p><pre>deadheat fix --with "your-agent {brief}"</pre></div></section>
+</main>
+<footer class="mono"><span id="made"></span><span>Browsers driven and checked by Kane CLI</span><span>Every screenshot and time on this page is from the run</span></footer>
+<div class="slit" id="slit"><span id="slitLabel"></span></div>
+<div class="loupe" id="loupe" aria-hidden="true"></div>
+<script>
+const DATA = /*DEADHEAT_DATA*/{ results: [] }/*END*/;
+const $ = id => document.getElementById(id), calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const ORDER = (r, short) => { const [a, b] = r.users.map(u => u.name); return r.order === 'together' ? (short ? 'together' : 'at the same instant') : r.order === 'first-then-second' ? `${a}, then ${b}` : `${b}, then ${a}`; };
+const WORK = { kept: 'kept', refused: 'refused, and told so', lost: 'silently lost' };
+const VERDICT = { clean: 'clean', lost: 'a user silently lost', broken: 'invariant broken', 'no-race': 'no race happened', error: 'could not run' };
+const sec = t => `${t.toFixed(1)} s`;
+let R = DATA.results[0], T = 0, dissolved = new Set();
+
+function headline(r) {
+  const lost = r.users.find(u => u.outcome === 'lost'), refused = r.users.find(u => u.outcome === 'refused');
+  if (r.verdict === 'error') return ['Could not run.', 'Kane CLI stopped early.', ''];
+  if (r.verdict === 'no-race') return ['No race.', 'The two saves never met.', ''];
+  if (lost) return ['Dead heat.', `${lost.name} `, 'lost without a word.', 'bad'];
+  if (r.verdict === 'broken') return ['Dead heat.', 'Both kept, and ', 'the invariant broke.', 'bad'];
+  if (refused) return ['Dead heat.', `${refused.name} was `, 'told no.', ''];
+  return ['Dead heat.', 'Both ', 'kept.', ''];
+}
+// Letters arrive stretched and settle. Spaces stay outside the spans so words do not glue together.
+function letters(text, start) { let i = start; return [text.split(/( )/).map(w => w === ' ' ? ' ' : `<span style="white-space:nowrap">${[...w].map(c => `<span class="l in" style="--i:${i++}">${esc(c)}</span>`).join('')}</span>`).join(''), i]; }
+function setHeadline(r) {
+  const [a, b, c, tone] = headline(r), [h1, n1] = letters(a, 0), [h2, n2] = letters(b, n1), [h3] = letters(c, n2);
+  $('verdict').innerHTML = `${h1}<br>${h2}${c ? `<mark class="${tone}">${h3}</mark>` : ''}`;
+  $('verdict').setAttribute('aria-label', `${a} ${b}${c}`);
+}
+
+const shotsOf = (r, name) => (r.shots || []).filter(s => s.lane === name).sort((x, y) => x.t - y.t);
+const TAGS = { frozen: 'save frozen', released: 'released', told: 'what the app said', kept: 'after a reload' };
+function build(r) {
+  R = r; dissolved = new Set();
+  const span = r.seconds || 1, x = t => `${(100 * t / span).toFixed(3)}%`;
+  setHeadline(r);
+  $('where').textContent = `${r.race} · released ${ORDER(r)}`;
+  $('screens').innerHTML = r.users.map((u, i) => `<div class="lane"><div class="who">${esc(u.name)}</div><div class="shot" data-lane="${i}">
+    ${shotsOf(r, u.name).map(s => `<img alt="${esc(u.name)}'s browser: ${TAGS[s.tag]}" data-t="${s.t}" data-tag="${s.tag}" src="${s.src}" style="opacity:0">`).join('') || '<div class="none">no screenshot was taken</div>'}
+    <canvas aria-hidden="true"></canvas><div class="tag"></div>
+    ${u.outcome ? `<div class="plate ${u.outcome}">${WORK[u.outcome]}<small>${u.outcome === 'lost' ? `The app said “${esc(u.told)}”. After a reload their work is not there.` : u.outcome === 'refused' ? 'Their work is not there, and the app said so.' : 'After a reload their work is still there.'}</small></div>` : ''}</div></div>`).join('');
+  const step = span > 240 ? 60 : span > 90 ? 20 : 10;
+  $('ruler').innerHTML = Array.from({ length: Math.floor(span / step) + 1 }, (_, i) => `<span style="left:${x(i * step)}">${i * step}s</span>`).join('');
+  const release = r.timeline.find(e => e.event === 'release');
+  $('rows').innerHTML = r.users.map(u => {
+    const held = r.timeline.find(e => e.event === 'held' && e.lane === u.name);
+    const phases = ['do', 'kept'].map(phase => { const a = r.timeline.find(e => e.event === 'kane' && e.lane === u.name && e.phase === phase), b = r.timeline.find(e => e.event === 'kane_end' && e.lane === u.name && e.phase === phase);
+      return a && b ? `<i class="seg ${phase}" style="left:${x(a.t)};width:${x(b.t - a.t)}" title="Kane CLI: ${phase === 'do' ? 'the action' : 'the check after a reload'}"></i>` : ''; }).join('');
+    return `<div class="row"><b>${esc(u.name)}</b>${phases}${held && release ? `<i class="seg frozen" style="left:${x(held.t)};width:max(4px, ${x(release.t - held.t)})" title="save frozen for ${sec(release.t - held.t)}"></i>` : ''}</div>`; }).join('');
+  $('finish').style.display = release ? '' : 'none';
+  if (release) { $('finish').style.left = x(release.t); $('finish').dataset.label = `released ${ORDER(r, true)} · ${sec(release.t)}`; $('finish').classList.toggle('flip', release.t / span > .6); }
+  for (const chip of $('orders').children) chip.setAttribute('aria-pressed', String(DATA.results[chip.dataset.i] === r));
+  for (const row of $('table').children) row.setAttribute('aria-current', String(DATA.results[row.dataset.i] === r));
+  $('rulings').innerHTML = r.users.map(u => `<article class="ruling ${u.outcome || ''} reveal seen"><h3>${esc(u.name)}<span>${WORK[u.outcome] || 'not judged'}</span></h3><dl>
+    <dt>The app said</dt><dd><q>${esc(u.told ?? 'nothing')}</q></dd>
+    <dt>After a reload</dt><dd>${u.outcome === 'kept' ? 'Their work is there.' : u.outcome ? 'Their work is not there.' : 'Not checked.'}</dd>
+    ${u.keptSummary ? `<dt>Kane CLI saw</dt><dd>${esc(u.keptSummary)}</dd>` : ''}
+    ${u.links?.length ? `<dt>Kane CLI runs</dt><dd>${u.links.map((l, i) => `<a href="${esc(l)}" target="_blank" rel="noreferrer" data-hot>${i ? 'the check' : 'the action'}</a>`).join(' · ')}</dd>` : ''}</dl></article>`).join('');
+  $('tape').innerHTML = r.timeline.filter(e => ['held', 'release', 'kane_end', 'verdict'].includes(e.event)).map(e => `${e.t.toFixed(1).padStart(6)}s  ` + (e.event === 'held' ? `${esc(e.lane)}'s ${e.method} ${esc(e.path)} frozen`
+    : e.event === 'release' ? `<em>released ${e.together ? 'together' : e.order.map(esc).join(', then ')}</em>` : e.event === 'verdict' ? `verdict: ${VERDICT[e.verdict]}` : `${esc(e.lane)} · ${e.phase} · Kane CLI ${e.status}`)).join('\n') + (r.errors.length ? `\n\n${r.errors.map(esc).join('\n')}` : '');
+  seek(pinned() ? 0 : span);
+}
+
+function caption(r, t) {
+  const held = r.timeline.filter(e => e.event === 'held' && e.t <= t), release = r.timeline.find(e => e.event === 'release'), [a, b] = r.users.map(u => u.name);
+  const checks = r.timeline.find(e => e.event === 'kane' && e.phase === 'kept');
+  if (!release) return r.verdict === 'error' ? r.errors.join(' ') : 'The two saves were never frozen together, so nothing was proven.';
+  if (checks && t >= checks.t) return `After a reload, Kane CLI looks in each browser for that user's own work. ${r.users.map(u => `${u.name}: ${WORK[u.outcome]}.`).join(' ')}`;
+  if (t >= release.t) return `Both saves reach the app ${ORDER(r)}. Each user now reads what the app tells them.`;
+  if (held.length === 2) return `Both saves are frozen at the proxy. Neither has reached the app.`;
+  if (held.length === 1) return `${held[0].lane} pressed save. The request is frozen until ${held[0].lane === a ? b : a} presses save too.`;
+  return `${a} and ${b} each open the same page in their own browser. Kane CLI is driving both.`;
+}
+function seek(t) {
+  const r = R, span = r.seconds || 1; T = Math.max(0, Math.min(span, t));
+  $('now').style.left = `${100 * T / span}%`; $('now').style.setProperty('--tag', T / span > .9 ? '-100%' : T / span < .1 ? '0%' : '-50%'); $('now').dataset.t = sec(T); $('time').value = Math.round(1000 * T / span);
+  $('caption').textContent = caption(r, T);
+  document.querySelectorAll('.shot').forEach((el, i) => {
+    const imgs = [...el.querySelectorAll('img')], current = imgs.filter(m => +m.dataset.t <= T).pop() || imgs[0];
+    imgs.forEach(m => { m.style.opacity = m === current ? (+m.dataset.t <= T ? 1 : .35) : 0; });
+    el.querySelector('.tag').textContent = current ? (+current.dataset.t <= T ? `${TAGS[current.dataset.tag]} · ${sec(+current.dataset.t)}` : 'on the way to the save') : '';
+    const done = current?.dataset.tag === 'kept' && +current.dataset.t <= T, u = r.users[i];
+    el.querySelector('.plate')?.classList.toggle('on', Boolean(done));
+    if (done && u.outcome === 'lost' && !dissolved.has(i)) { dissolved.add(i); dissolve(el.querySelector('canvas'), imgs.find(m => m.dataset.tag === 'told')); }
+    if (!done) { dissolved.delete(i); const c = el.querySelector('canvas'); c.getContext('2d').clearRect(0, 0, c.width, c.height); }
+  });
+}
+// The screen that said yes breaks into halftone dots and blows off the lane.
+function dissolve(canvas, img) {
+  if (!img || calm) return;
+  const w = canvas.width = canvas.clientWidth, h = canvas.height = canvas.clientHeight, cell = 9, small = document.createElement('canvas');
+  small.width = Math.ceil(w / cell); small.height = Math.ceil(h / cell);
+  const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight), sx = small.getContext('2d', { willReadFrequently: true });
+  sx.drawImage(img, 0, 0, w / scale, h / scale, 0, 0, small.width, small.height);
+  const px = sx.getImageData(0, 0, small.width, small.height).data, dots = [];
+  for (let y = 0; y < small.height; y++) for (let x = 0; x < small.width; x++) { const k = 4 * (y * small.width + x), dark = 1 - (px[k] * .3 + px[k + 1] * .59 + px[k + 2] * .11) / 255; dots.push({ x: x * cell + cell / 2, y: y * cell + cell / 2, r: .8 + dark * 3.4, v: .5 + Math.random(), d: Math.random() * .35 }); }
+  const g = canvas.getContext('2d'), t0 = performance.now();
+  (function frame(now) {
+    const p = Math.min(1, (now - t0) / 1500); g.clearRect(0, 0, w, h);
+    if (p < 1) { g.fillStyle = `rgba(255,255,255,${.92 * (1 - p)})`; g.fillRect(0, 0, w, h); g.fillStyle = '#101113';
+      for (const d of dots) { const q = Math.max(0, (p - d.d) / (1 - d.d)), r = d.r * (1 - q); if (r > .15) { g.beginPath(); g.arc(d.x + q * q * w * .5 * d.v, d.y - q * 14 * d.v, r, 0, 6.3); g.fill(); } }
+      requestAnimationFrame(frame); }
+  })(t0);
+}
+
+const pinned = () => matchMedia('(min-width: 761px)').matches;
+function fromScroll() { if (!pinned()) return; const el = $('race'), room = el.offsetHeight - innerHeight; if (room > 0) seek(R.seconds * Math.max(0, Math.min(1, scrollY / (room * .92)))); }
+let lastY = scrollY, speed = 0;
+addEventListener('scroll', () => { fromScroll(); }, { passive: true });
+(function tick() { speed += (Math.abs(scrollY - lastY) - speed) * .12; lastY = scrollY; document.documentElement.style.setProperty('--dot', `${(1.1 + Math.min(1.5, speed / 40)).toFixed(2)}px`); requestAnimationFrame(tick); })();
+const drag = e => { const box = $('track').getBoundingClientRect(); seek(R.seconds * (e.clientX - box.left) / box.width); };
+$('track').addEventListener('pointerdown', e => { $('track').setPointerCapture(e.pointerId); drag(e); $('track').onpointermove = drag; });
+$('track').addEventListener('pointerup', () => { $('track').onpointermove = null; });
+$('time').addEventListener('input', e => seek(R.seconds * e.target.value / 1000));
+addEventListener('keydown', e => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') seek(T + (e.key === 'ArrowRight' ? 1 : -1) * R.seconds / 50); });
+
+// Choosing another order wipes the page off and re-exposes it through a moving slit.
+function choose(i) {
+  const r = DATA.results[i]; if (r === R) return;
+  if (calm) { build(r); return; }
+  const root = document.documentElement; $('slitLabel').textContent = `exposing · ${ORDER(r, true)}`;
+  root.classList.add('exposing'); root.style.setProperty('--p', '0%');
+  setTimeout(() => { scrollTo(0, 0); build(r); root.style.setProperty('--p', '100%'); setTimeout(() => root.classList.remove('exposing'), 460); }, 440);
+}
+function init() {
+  if (!DATA.results.length) { $('verdict').textContent = 'No race in this report.'; return; }
+  const [a, b] = DATA.results[0].users.map(u => u.name); $('thA').textContent = a || ''; $('thB').textContent = b || '';
+  $('orders').innerHTML = DATA.results.map((r, i) => `<button class="chip ${r.verdict === 'clean' ? '' : 'bad'}" data-i="${i}" data-hot aria-pressed="false">${esc(ORDER(r, true))}</button>`).join('');
+  $('table').innerHTML = DATA.results.map((r, i) => `<tr data-i="${i}" tabindex="0" data-hot><td>${esc(ORDER(r))}</td><td><span class="v ${r.verdict === 'clean' ? '' : 'bad'}">${VERDICT[r.verdict]}</span></td>${[0, 1].map(k => `<td>${WORK[r.users[k]?.outcome] || 'not judged'}</td>`).join('')}<td>${r.credits.toFixed(0)}</td><td>${r.seconds.toFixed(0)}</td></tr>`).join('');
+  $('orders').addEventListener('click', e => { const chip = e.target.closest('.chip'); if (chip) choose(+chip.dataset.i); });
+  $('table').addEventListener('click', e => { const row = e.target.closest('tr'); if (row) choose(+row.dataset.i); });
+  $('table').addEventListener('keydown', e => { if (e.key === 'Enter') choose(+e.target.dataset.i); });
+  if (DATA.repo) $('gh').href = DATA.repo; else $('gh').remove();
+  $('made').textContent = `Generated ${new Date(DATA.generated).toLocaleString()}`;
+  build(DATA.results.find(r => r.verdict !== 'clean') || DATA.results[0]);
+  const seen = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && e.target.classList.add('seen')), { threshold: .15 });
+  document.querySelectorAll('.reveal').forEach(el => seen.observe(el));
+}
+// Pointer life: the loupe, buttons that lean toward it, and a dot burst on press.
+const loupe = $('loupe');
+addEventListener('pointermove', e => { loupe.classList.add('live'); loupe.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`; loupe.classList.toggle('hot', Boolean(e.target.closest?.('[data-hot]')));
+  const chip = e.target.closest?.('.chip'); document.querySelectorAll('.chip').forEach(c => { if (c !== chip) c.style.transform = ''; });
+  if (chip && !calm) { const b = chip.getBoundingClientRect(); chip.style.transform = `translate(${(e.clientX - b.left - b.width / 2) * .18}px, ${(e.clientY - b.top - b.height / 2) * .3}px)`; } }, { passive: true });
+addEventListener('pointerdown', e => { loupe.classList.add('down'); const chip = e.target.closest?.('.chip'); if (chip && !calm) { const b = chip.getBoundingClientRect(), dot = document.createElement('span'); dot.className = 'burst'; dot.style.left = `${e.clientX - b.left - 4}px`; dot.style.top = `${e.clientY - b.top - 4}px`; chip.append(dot); setTimeout(() => dot.remove(), 520); } });
+addEventListener('pointerup', () => loupe.classList.remove('down'));
+init();
+</script>
+</body>
+</html>

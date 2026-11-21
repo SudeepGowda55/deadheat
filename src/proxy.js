@@ -5,10 +5,10 @@ import net from 'node:net'
 
 export function startProxy({ upstream, lanes, hold, order = 'together', holdTimeoutMs = 180_000, log = () => {}, beforeRelease }) {
   const target = new URL(upstream)
-  const held = new Map()
-  const done = new Set()
+  const held = new Map(lanes.map(lane => [lane.name, []]))
+  let released = false
   let finish
-  const released = new Promise(resolve => { finish = resolve })
+  const done = new Promise(resolve => { finish = resolve })
 
   const forward = (req, body, res) => new Promise(resolve => {
     // The Host header is kept so the app builds links, redirects and CSRF checks against the lane's own address.
@@ -21,15 +21,17 @@ export function startProxy({ upstream, lanes, hold, order = 'together', holdTime
     up.end(body)
   })
 
+  const live = name => held.get(name).filter(item => !item.gone)
   const release = async reason => {
-    if (!held.size) return
-    const names = order === 'together' ? [...held.keys()] : order.filter(n => held.has(n))
-    const waiting = names.map(n => held.get(n))
-    held.clear()
+    if (released) return
+    released = true
+    const names = (order === 'together' ? lanes.map(l => l.name) : order).filter(n => live(n).length)
     await beforeRelease?.() // both users are stuck on their save: the moment worth a picture
     log({ event: 'release', reason, order: names, together: order === 'together' })
-    if (order === 'together') await Promise.all(waiting.map(go => go()))
-    else for (const go of waiting) await go()
+    // A lane normally holds one save. A second one (an impatient double click sent by script) follows in arrival order.
+    const lane = async name => { for (const item of live(name)) await item.go() }
+    if (order === 'together') await Promise.all(names.map(lane))
+    else for (const name of names) await lane(name)
     finish({ reason, order: names })
   }
 
@@ -39,11 +41,13 @@ export function startProxy({ upstream, lanes, hold, order = 'together', holdTime
     req.on('end', () => {
       const body = Buffer.concat(chunks)
       const entry = { lane: lane.name, method: req.method, path: req.url, bytes: body.length }
-      if (done.has(lane.name) || !hold(req, body)) { log({ event: 'pass', ...entry }); return forward(req, body, res) }
-      done.add(lane.name)
-      log({ event: 'held', ...entry })
-      held.set(lane.name, () => forward(req, body, res))
-      if (held.size === lanes.length) release('all lanes held')
+      if (released || !hold(req, body)) { log({ event: 'pass', ...entry }); return forward(req, body, res) }
+      // Every matching save waits, not only the first: a retried click must not slip past the freeze.
+      const item = { gone: false, go: () => forward(req, body, res) }
+      res.on('close', () => { if (!released) { item.gone = true; log({ event: 'abandoned', ...entry }) } }) // the browser gave up on it
+      log({ event: held.get(lane.name).length ? 'held_again' : 'held', ...entry })
+      held.get(lane.name).push(item)
+      if (lanes.every(l => live(l.name).length)) release('all lanes held')
       else setTimeout(() => release('timeout: the other user never reached the save'), holdTimeoutMs).unref()
     })
   }).on('upgrade', (req, socket, head) => {
@@ -57,5 +61,5 @@ export function startProxy({ upstream, lanes, hold, order = 'together', holdTime
     socket.on('error', () => up.destroy())
   }).listen(lane.port, '127.0.0.1'))
 
-  return { released, heldLanes: () => [...done], close: () => Promise.all(servers.map(s => new Promise(r => s.close(r)))) }
+  return { released: done, heldLanes: () => lanes.map(l => l.name).filter(n => held.get(n).length), close: () => Promise.all(servers.map(s => new Promise(r => s.close(r)))) }
 }

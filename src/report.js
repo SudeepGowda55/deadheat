@@ -1,9 +1,10 @@
 // What a person reads after a race: the terminal summary and a Markdown report next to the screenshots.
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const WORDS = { kept: 'kept', refused: 'refused, and told so', lost: 'SILENTLY LOST' }
 const HEAD = { clean: 'clean', lost: 'A USER SILENTLY LOST', broken: 'INVARIANT BROKEN', 'no-race': 'no race happened', error: 'could not run' }
+const REPO = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).repository?.url ?? null
 const time = t => `${t.toFixed(1).padStart(6)}s`
 
 export function printEvent(e) {
@@ -40,5 +41,9 @@ export function writeReport(results, dir) {
   }
   writeFileSync(join(dir, 'report.json'), JSON.stringify(results, null, 2))
   writeFileSync(join(dir, 'report.md'), md.join('\n'))
-  return join(dir, 'report.md')
+  // One self-contained page: the screenshots travel inside it, so it can be attached to a pull request as is.
+  const inline = results.map(r => ({ ...r, shots: (r.shots || []).map(({ file, ...s }) => ({ ...s, src: `data:image/jpeg;base64,${readFileSync(file).toString('base64')}` })) }))
+  const data = JSON.stringify({ generated: new Date().toISOString(), repo: REPO, results: inline }).replace(/</g, '\\u003c')
+  writeFileSync(join(dir, 'report.html'), readFileSync(new URL('./report.html', import.meta.url), 'utf8').replace(/\/\*DEADHEAT_DATA\*\/.*?\/\*END\*\//s, () => data))
+  return join(dir, 'report.html')
 }

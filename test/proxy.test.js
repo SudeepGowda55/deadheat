@@ -33,3 +33,22 @@ test('websocket upgrades pass through a lane', async () => {
   await proxy.close(); app.close()
   assert.match(reply, /101 Switching Protocols[\s\S]*hello$/)
 })
+
+test('a save retried while frozen waits too, and the abandoned one never reaches the app', async () => {
+  const seen = []
+  const app = http.createServer((req, res) => { seen.push(req.url); res.end('ok') })
+  await new Promise(r => app.listen(4771, '127.0.0.1', r))
+  const events = []
+  const proxy = startProxy({ upstream: 'http://127.0.0.1:4771', lanes: [{ name: 'A', port: 4772 }, { name: 'B', port: 4773 }], hold, log: e => events.push(e.event) })
+  const impatient = new AbortController()
+  fetch('http://127.0.0.1:4772/save?try=1', { method: 'POST', signal: impatient.signal }).catch(() => {})
+  await new Promise(r => setTimeout(r, 150))
+  impatient.abort()
+  const retry = fetch('http://127.0.0.1:4772/save?try=2', { method: 'POST' })
+  await new Promise(r => setTimeout(r, 150))
+  assert.deepEqual(seen, [], 'nothing reaches the app while one lane is still on its way')
+  await Promise.all([retry, fetch('http://127.0.0.1:4773/save?b', { method: 'POST' })])
+  await proxy.close(); app.close()
+  assert.deepEqual(seen.sort(), ['/save?b', '/save?try=2'])
+  assert.ok(events.includes('abandoned') && events.includes('held_again'))
+})
