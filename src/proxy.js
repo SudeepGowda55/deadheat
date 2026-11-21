@@ -1,8 +1,9 @@
 // A reverse proxy with one port per user ("lane"). The first request in each lane that `hold` matches is
 // frozen until every lane has one, then they are let through in the chosen order.
 import http from 'node:http'
+import net from 'node:net'
 
-export function startProxy({ upstream, lanes, hold, order = 'together', holdTimeoutMs = 180_000, log = () => {} }) {
+export function startProxy({ upstream, lanes, hold, order = 'together', holdTimeoutMs = 180_000, log = () => {}, beforeRelease }) {
   const target = new URL(upstream)
   const held = new Map()
   const done = new Set()
@@ -25,6 +26,7 @@ export function startProxy({ upstream, lanes, hold, order = 'together', holdTime
     const names = order === 'together' ? [...held.keys()] : order.filter(n => held.has(n))
     const waiting = names.map(n => held.get(n))
     held.clear()
+    await beforeRelease?.() // both users are stuck on their save: the moment worth a picture
     log({ event: 'release', reason, order: names, together: order === 'together' })
     if (order === 'together') await Promise.all(waiting.map(go => go()))
     else for (const go of waiting) await go()
@@ -44,6 +46,15 @@ export function startProxy({ upstream, lanes, hold, order = 'together', holdTime
       if (held.size === lanes.length) release('all lanes held')
       else setTimeout(() => release('timeout: the other user never reached the save'), holdTimeoutMs).unref()
     })
+  }).on('upgrade', (req, socket, head) => {
+    // WebSockets (live updates, dev servers) pass straight through; only plain HTTP writes are frozen.
+    const up = net.connect(target.port, target.hostname, () => {
+      up.write(`${req.method} ${req.url} HTTP/1.1\r\n${Object.entries(req.headers).map(([k, v]) => `${k}: ${v}\r\n`).join('')}\r\n`)
+      up.write(head)
+      socket.pipe(up).pipe(socket)
+    })
+    up.on('error', () => socket.destroy())
+    socket.on('error', () => up.destroy())
   }).listen(lane.port, '127.0.0.1'))
 
   return { released, heldLanes: () => [...done], close: () => Promise.all(servers.map(s => new Promise(r => s.close(r)))) }

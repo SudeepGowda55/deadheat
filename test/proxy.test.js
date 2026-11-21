@@ -1,3 +1,5 @@
+import http from 'node:http'
+import net from 'node:net'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { startProxy } from '../src/proxy.js'
@@ -18,3 +20,16 @@ async function race(safe, ports) {
 
 test('two frozen bookings released together are both told yes by the unsafe desk', async () => assert.equal(await race(false, [4711, 4712, 4713]), 2))
 test('the safe desk tells only one of them yes', async () => assert.equal(await race(true, [4721, 4722, 4723]), 1))
+
+test('websocket upgrades pass through a lane', async () => {
+  const app = http.createServer().on('upgrade', (req, socket) => socket.end('HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\nhello'))
+  await new Promise(r => app.listen(4761, '127.0.0.1', r))
+  const proxy = startProxy({ upstream: 'http://127.0.0.1:4761', lanes: [{ name: 'A', port: 4762 }], hold })
+  const reply = await new Promise(resolve => {
+    const socket = net.connect(4762, '127.0.0.1', () => socket.write('GET /live HTTP/1.1\r\nHost: x\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n'))
+    let text = ''
+    socket.on('data', d => { text += d }).on('end', () => resolve(text))
+  })
+  await proxy.close(); app.close()
+  assert.match(reply, /101 Switching Protocols[\s\S]*hello$/)
+})
