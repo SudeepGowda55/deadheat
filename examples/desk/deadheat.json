@@ -1,0 +1,23 @@
+{
+  "app": { "url": "http://127.0.0.1:4700", "start": "node desk.js" },
+  "races": [
+    {
+      "name": "last desk",
+      "hold": "POST /book",
+      "users": [
+        {
+          "name": "Manvith",
+          "do": "Type \"Manvith\" into the \"Your name\" field and click \"Book the desk\".",
+          "kept": "The status line says the desk is booked by Manvith.",
+          "refused": "the page says someone else just booked the desk"
+        },
+        {
+          "name": "Sudeep",
+          "do": "Type \"Sudeep\" into the \"Your name\" field and click \"Book the desk\".",
+          "kept": "The status line says the desk is booked by Sudeep.",
+          "refused": "the page says someone else just booked the desk"
+        }
+      ]
+    }
+  ]
+}
