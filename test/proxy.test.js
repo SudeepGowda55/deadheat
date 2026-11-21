@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { startProxy } from '../src/proxy.js'
-import { startDesk } from './fixtures/desk.js'
+import { startDesk } from '../examples/desk/desk.js'
 
 const book = (port, name) => fetch(`http://127.0.0.1:${port}/book`, { method: 'POST', redirect: 'manual', body: new URLSearchParams({ name }) }).then(r => r.headers.get('location'))
 const hold = req => req.method === 'POST'

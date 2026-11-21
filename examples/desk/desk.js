@@ -1,5 +1,5 @@
-// Test fixture only: one hot desk that anyone can book. It checks, waits a moment, then writes, so two
-// simultaneous bookings both succeed. Dead Heat's own tests race against this; it is not a demo target.
+// Example and test fixture: one hot desk that anyone can book. It checks, waits a moment, then writes, so two
+// simultaneous bookings both succeed. Dead Heat's own tests and the two-minute quickstart race against it.
 import http from 'node:http'
 
 export function startDesk(port, { safe = false } = {}) {
@@ -26,3 +26,5 @@ export function startDesk(port, { safe = false } = {}) {
   })
   return new Promise(resolve => server.listen(port, '127.0.0.1', () => resolve(server)))
 }
+
+if (import.meta.url === `file://${process.argv[1]}`) await startDesk(Number(process.env.PORT) || 4700, { safe: process.env.SAFE === '1' })
