@@ -1,0 +1,29 @@
+{
+  "app": {
+    "url": "http://127.0.0.1:3000",
+    "reset": "rm -rf gogs/data gogs/repos && cp -R seed/data gogs/data && cp -R seed/repos gogs/repos",
+    "start": "cd gogs && ./gogs web"
+  },
+  "races": [
+    {
+      "name": "two people edit one wiki page",
+      "hold": "POST /manvith/handbook/wiki/*",
+      "users": [
+        {
+          "name": "Manvith",
+          "setup": "Sign in with username \"manvith\" and password \"deadheat1\". Go to /manvith/handbook/wiki/Home and click \"Edit Page\" so the page editor is open.",
+          "do": "In the editor, add this as a new line at the end of the content: \"Lunch is at 1 pm.\" Then click \"Save Page\".",
+          "kept": "Go to /manvith/handbook/wiki/Home. The page contains the sentence \"Lunch is at 1 pm.\"",
+          "refused": "the page shows a warning or error saying that someone else changed this page"
+        },
+        {
+          "name": "Sudeep",
+          "setup": "Sign in with username \"sudeep\" and password \"deadheat1\". Go to /manvith/handbook/wiki/Home and click \"Edit Page\" so the page editor is open.",
+          "do": "In the editor, add this as a new line at the end of the content: \"The wifi password is on the whiteboard.\" Then click \"Save Page\".",
+          "kept": "Go to /manvith/handbook/wiki/Home. The page contains the sentence \"The wifi password is on the whiteboard.\"",
+          "refused": "the page shows a warning or error saying that someone else changed this page"
+        }
+      ]
+    }
+  ]
+}

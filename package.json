@@ -6,5 +6,7 @@
   "bin": { "deadheat": "bin/deadheat.js" },
   "scripts": { "test": "node --test" },
   "engines": { "node": ">=22" },
+  "repository": { "type": "git", "url": "https://github.com/SudeepGowda55/deadheat" },
+  "files": ["bin", "src", "skills", "README.md"],
   "license": "MIT"
 }

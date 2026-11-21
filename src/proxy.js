@@ -13,6 +13,8 @@ export function startProxy({ upstream, lanes, hold, order = 'together', holdTime
   const forward = (req, body, res) => new Promise(resolve => {
     // The Host header is kept so the app builds links, redirects and CSRF checks against the lane's own address.
     const up = http.request({ host: target.hostname, port: target.port, method: req.method, path: req.url, headers: req.headers }, r => {
+      // An app that redirects to its own absolute address would walk the browser out of its lane.
+      if (r.headers.location?.startsWith(target.origin)) r.headers.location = `http://${req.headers.host}${r.headers.location.slice(target.origin.length)}`
       res.writeHead(r.statusCode, r.headers)
       r.pipe(res)
       r.on('end', () => resolve(r.statusCode))

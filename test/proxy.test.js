@@ -52,3 +52,12 @@ test('a save retried while frozen waits too, and the abandoned one never reaches
   assert.deepEqual(seen.sort(), ['/save?b', '/save?try=2'])
   assert.ok(events.includes('abandoned') && events.includes('held_again'))
 })
+
+test('a redirect to the app\'s own address is kept inside the lane', async () => {
+  const app = http.createServer((req, res) => { res.writeHead(302, { location: 'http://127.0.0.1:4781/next?x=1' }); res.end() })
+  await new Promise(r => app.listen(4781, '127.0.0.1', r))
+  const proxy = startProxy({ upstream: 'http://127.0.0.1:4781', lanes: [{ name: 'A', port: 4782 }], hold })
+  const location = await fetch('http://127.0.0.1:4782/', { redirect: 'manual' }).then(r => r.headers.get('location'))
+  await proxy.close(); app.close()
+  assert.equal(location, 'http://127.0.0.1:4782/next?x=1')
+})
