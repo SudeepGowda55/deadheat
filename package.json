@@ -1,0 +1,10 @@
+{
+  "name": "deadheat",
+  "version": "0.1.0",
+  "description": "Makes two real users hit save at the same instant, then has Kane CLI check whether one of them silently lost.",
+  "type": "module",
+  "bin": { "deadheat": "bin/deadheat.js" },
+  "scripts": { "test": "node --test" },
+  "engines": { "node": ">=20" },
+  "license": "MIT"
+}
