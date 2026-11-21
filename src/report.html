@@ -40,14 +40,14 @@ button { font: inherit; color: inherit; }
 .race { height: 340vh; }
 .stage { position: sticky; top: 0; height: 100vh; min-height: 620px; display: grid; grid-template-rows: 56px auto minmax(0, 1fr) auto auto; mask-image: linear-gradient(90deg, #000 var(--p), transparent var(--p)); -webkit-mask-image: linear-gradient(90deg, #000 var(--p), transparent var(--p)); }
 .head { display: flex; align-items: flex-end; gap: 24px; padding: 2px clamp(16px, 3vw, 40px) 14px; }
-h1 { margin: 0; font: italic 800 clamp(1.9rem, 4.4vw, 4.1rem)/1.14 var(--display); letter-spacing: -.02em; }
+h1 { margin: 0; flex: 1 0 0; font: italic 800 clamp(1.9rem, 3.7vw, 3.5rem)/1.14 var(--display); letter-spacing: -.02em; }
 h1 .l { display: inline-block; transform-origin: 0 60%; }
 h1 .l.in { animation: smear .7s cubic-bezier(.16,.9,.2,1) both; animation-delay: calc(var(--i) * 26ms); }
 h1 mark { background: var(--white); color: var(--ink); padding: 0 .16em; margin: 0 -.04em; line-height: 1; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 h1 mark.bad { background: var(--ink); color: var(--white); }
 /* Slow things look stretched in a photo-finish picture; the letters arrive that way and settle. */
 @keyframes smear { from { opacity: 0; transform: translateX(-.7em) scaleX(2.8) skewX(-20deg); } 60% { opacity: 1; } to { opacity: 1; transform: none; } }
-.orders { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding-bottom: 6px; }
+.orders { margin-left: auto; max-width: 30%; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding-bottom: 6px; }
 .chip { border: 1.5px solid var(--ink); background: transparent; padding: 7px 12px 6px; cursor: pointer; font-family: var(--mono); font-size: .74rem; display: flex; align-items: center; gap: 8px; position: relative; overflow: hidden; transition: transform .25s cubic-bezier(.2,.9,.2,1), background .2s, color .2s; }
 .chip::before { content: ''; width: 9px; height: 9px; background: var(--white); border: 1.5px solid var(--ink); }
 .chip.bad::before { background: var(--line); }
@@ -144,7 +144,7 @@ footer { padding: 26px clamp(16px, 3vw, 40px) 36px; color: var(--soft); display:
   .race { height: auto; }
   .stage { position: static; height: auto; min-height: 0; display: block; }
   .head { display: block; padding-top: 8px; }
-  .orders { justify-content: flex-start; margin: 14px 0 0; }
+  .orders { justify-content: flex-start; margin: 14px 0 0; max-width: none; }
   .screens { grid-template-columns: 1fr; gap: 10px; }
   .lane, .lane + .lane { grid-template-columns: 30px minmax(0, 1fr); border-left: 0; }
   .lane + .lane .who { order: 0; transform: rotate(180deg); }
