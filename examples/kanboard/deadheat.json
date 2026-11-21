@@ -1,0 +1,29 @@
+{
+  "app": {
+    "url": "http://127.0.0.1:8000",
+    "reset": "cp seed.sqlite kanboard/data/db.sqlite",
+    "start": "PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8000 -t kanboard"
+  },
+  "races": [
+    {
+      "name": "two people edit one task",
+      "hold": "POST /?controller=TaskModificationController&action=update*",
+      "users": [
+        {
+          "name": "Manvith",
+          "setup": "Log in with username \"manvith\" and password \"deadheat1\". Open the task \"Send the launch email\" and click \"Edit the task\" so its edit form is open.",
+          "do": "In the edit form, replace the description with \"Send it at 9 am on Monday.\" and click Save.",
+          "kept": "Open the task \"Send the launch email\" in the project \"Launch week\". Its description says \"Send it at 9 am on Monday.\"",
+          "refused": "the page shows a warning or error saying that someone else changed this task"
+        },
+        {
+          "name": "Sudeep",
+          "setup": "Log in with username \"sudeep\" and password \"deadheat1\". Open the task \"Send the launch email\" and click \"Edit the task\" so its edit form is open.",
+          "do": "In the edit form, change the title to \"Send the launch email to every customer\" and click Save.",
+          "kept": "Open the only task in the project \"Launch week\". Its title is \"Send the launch email to every customer\".",
+          "refused": "the page shows a warning or error saying that someone else changed this task"
+        }
+      ]
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process'
 export function kaneRun(objective, { url, timeout = 240, headless = true, cdpEndpoint, variables, cwd, onStep = () => {} } = {}) {
   const args = ['run', objective, '--agent', '--timeout', String(timeout)]
   if (url) args.push('--url', url)
+  else args.push('--allow-missing-url') // carry on from the page the last objective left open
   if (cdpEndpoint) args.push('--cdp-endpoint', cdpEndpoint)
   else if (headless) args.push('--headless')
   if (variables) args.push('--variables', JSON.stringify(variables))

@@ -76,8 +76,9 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
   const run = async (lane, phase, objective, startUrl) => {
     log({ event: 'kane', lane: lane.user.name, phase, objective })
     const r = await drive(objective, { url: startUrl, cdpEndpoint: lane.chrome.endpoint, onStep: step(lane) })
-    log({ event: 'kane_end', lane: lane.user.name, phase, status: r.status, summary: r.one_liner, credits: r.credits_consumed, link: r.test_url })
-    if (r.status === 'error' || r.status === 'timeout') errors.push(`${lane.user.name} ${phase}: ${r.reason || r.stderr || r.status}`)
+    log({ event: 'kane_end', lane: lane.user.name, phase, status: r.status, summary: r.one_liner, why: r.status === 'passed' ? undefined : r.reason || r.summary || r.stderr, credits: r.credits_consumed, link: r.test_url })
+    // A user who could not even perform the action leaves nothing to judge.
+    if (r.status === 'error' || r.status === 'timeout' || (r.status === 'failed' && phase !== 'kept' && phase !== 'invariant')) errors.push(`${lane.user.name} ${phase}: ${r.reason || r.stderr || r.status}`)
     return r
   }
   try {
@@ -98,7 +99,7 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
     const whole = held && race.invariant ? await run(lanes[0], 'invariant', `Verify this, and fail if it is not true: ${race.invariant}`, lanes[0].origin + (race.path || '/')) : null
     const users = lanes.map((lane, i) => {
       const state = acts[i].final_state || {}
-      const u = { name: lane.user.name, told: state.told ?? null, kept: checks[i]?.status === 'passed', refused: said(state.refused),
+      const u = { name: lane.user.name, told: /^\s*nothing\s*$/i.test(state.told ?? '') ? null : state.told ?? null, answered: timeline.find(e => e.event === 'answered' && e.lane === lane.user.name)?.status ?? null, kept: checks[i]?.status === 'passed', refused: said(state.refused),
         links: [acts[i].test_url, checks[i]?.test_url].filter(Boolean), keptSummary: checks[i]?.summary ?? null }
       return { ...u, outcome: held ? outcome(u) : null }
     })

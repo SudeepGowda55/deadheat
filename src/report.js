@@ -11,13 +11,16 @@ export function printEvent(e) {
   if (e.event === 'held') console.log(`${time(e.t)}  ■ ${e.lane}'s ${e.method} ${e.path} is frozen`)
   else if (e.event === 'release') console.log(`${time(e.t)}  ▶ released ${e.together ? 'together' : e.order.join(', then ')}${e.reason.startsWith('timeout') ? ` (${e.reason})` : ''}`)
   else if (e.event === 'kane') console.log(`${time(e.t)}  ${e.lane} · ${e.phase} · Kane CLI started`)
-  else if (e.event === 'kane_end') console.log(`${time(e.t)}  ${e.lane} · ${e.phase} · ${e.status}${e.summary ? ` · ${e.summary}` : ''}`)
+  else if (e.event === 'kane_end') console.log(`${time(e.t)}  ${e.lane} · ${e.phase} · ${e.status}${e.summary ? ` · ${e.summary}` : ''}${e.why ? ` · ${String(e.why).replace(/\s+/g, ' ').slice(0, 300)}` : ''}`)
 }
+
+// What the user saw, or failing that what the app answered to their save.
+const said = u => u.told ? `was told "${u.told}"` : u.answered ? `saw no warning (the app answered ${u.answered} to the save)` : 'saw no message'
 
 export function explain(r) {
   if (r.verdict === 'no-race') return 'Both saves were never frozen at the same time, so nothing was proven. Check the "hold" pattern and that each "do" really ends in a save.'
   if (r.verdict === 'error') return r.errors.join('; ')
-  const lines = r.users.map(u => `${u.name} was told "${u.told ?? 'nothing'}" and their work was ${WORDS[u.outcome]}.`)
+  const lines = r.users.map(u => `${u.name} ${said(u)} and their work was ${WORDS[u.outcome]}.`)
   if (r.invariant === false) lines.push(`The invariant did not hold: ${r.invariantSummary ?? ''}`.trim())
   return lines.join(' ')
 }
@@ -35,7 +38,7 @@ export function writeReport(results, dir) {
   for (const r of results) {
     md.push(`## ${r.race} · ${r.order}: ${HEAD[r.verdict]}`, '', explain(r), '')
     if (r.users.length) md.push('| User | Told | Work after reload | Kane CLI runs |', '|---|---|---|---|',
-      ...r.users.map(u => `| ${u.name} | ${u.told ?? ''} | ${WORDS[u.outcome] ?? ''} | ${u.links.map((l, i) => `[${i ? 'check' : 'action'}](${l})`).join(' ')} |`), '')
+      ...r.users.map(u => `| ${u.name} | ${u.told ?? (u.answered ? `no warning; the app answered ${u.answered}` : '')} | ${WORDS[u.outcome] ?? ''} | ${u.links.map((l, i) => `[${i ? 'check' : 'action'}](${l})`).join(' ')} |`), '')
     md.push('```', ...r.timeline.filter(e => ['held', 'release', 'kane_end'].includes(e.event)).map(e => `${time(e.t)}  ${e.event === 'held' ? `${e.lane} frozen at ${e.method} ${e.path}`
       : e.event === 'release' ? `released ${e.together ? 'together' : e.order.join(', then ')}` : `${e.lane} ${e.phase}: ${e.status}`}`), '```', '')
   }

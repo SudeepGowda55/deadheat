@@ -15,7 +15,7 @@ export function startProxy({ upstream, lanes, hold, order = 'together', holdTime
     const up = http.request({ host: target.hostname, port: target.port, method: req.method, path: req.url, headers: req.headers }, r => {
       res.writeHead(r.statusCode, r.headers)
       r.pipe(res)
-      r.on('end', resolve)
+      r.on('end', () => resolve(r.statusCode))
     })
     up.on('error', e => { if (!res.headersSent) res.writeHead(502); res.end(String(e)); resolve() })
     up.end(body)
@@ -43,7 +43,7 @@ export function startProxy({ upstream, lanes, hold, order = 'together', holdTime
       const entry = { lane: lane.name, method: req.method, path: req.url, bytes: body.length }
       if (released || !hold(req, body)) { log({ event: 'pass', ...entry }); return forward(req, body, res) }
       // Every matching save waits, not only the first: a retried click must not slip past the freeze.
-      const item = { gone: false, go: () => forward(req, body, res) }
+      const item = { gone: false, go: () => forward(req, body, res).then(status => log({ event: 'answered', ...entry, status })) }
       res.on('close', () => { if (!released) { item.gone = true; log({ event: 'abandoned', ...entry }) } }) // the browser gave up on it
       log({ event: held.get(lane.name).length ? 'held_again' : 'held', ...entry })
       held.get(lane.name).push(item)
