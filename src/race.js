@@ -32,16 +32,24 @@ export function verdict({ held, users, invariant, errors }) {
 export function appControl({ url, start, reset, cwd = process.cwd() }) {
   let child = null
   const stop = () => { if (child) { try { process.kill(-child.pid) } catch {} child = null } }
+  const answers = () => fetch(url, { redirect: 'manual' }).then(() => true, () => false)
+  const pause = ms => new Promise(r => setTimeout(r, ms))
   return {
     stop,
     async restart() {
       stop()
       if (reset) execSync(reset, { cwd, stdio: 'ignore' })
       if (!start) return
+      // Racing an app Dead Heat did not start (or one that has not let go of its port yet) would test stale data.
+      for (let i = 0; i < 40 && await answers(); i++) await pause(250)
+      if (await answers()) throw new Error(`Something is already answering on ${url}. Stop it first: Dead Heat starts the app itself.`)
       child = spawn(start, { cwd, shell: true, detached: true, stdio: 'ignore' })
+      let died = null
+      child.once('exit', code => { died = code })
       for (let i = 0; i < 240; i++) {
-        if (await fetch(url, { redirect: 'manual' }).then(() => true, () => false)) return
-        await new Promise(r => setTimeout(r, 500))
+        if (await answers()) return
+        if (died !== null) throw new Error(`"${start}" exited with code ${died} before ${url} answered`)
+        await pause(500)
       }
       throw new Error(`The app did not answer on ${url} within two minutes of "${start}"`)
     },
@@ -53,6 +61,7 @@ const said = value => /^\s*(yes|true)\b/i.test(String(value ?? ''))
 export async function runRace(race, { app, order = 'together', ports = [4801, 4802], chromePorts = [9341, 9342], headless = true, out, emit = () => {},
   drive = kaneRun, launch = launchChrome, shoot = screenshot } = {}) {
   if (race.users?.length !== 2) throw new Error(`Race "${race.name}" needs exactly two users`)
+  if (!race.users[0].name || race.users[0].name === race.users[1].name) throw new Error(`Race "${race.name}": the two users need different names`)
   const t0 = Date.now(), timeline = [], errors = []
   let lanes = []
   const log = event => {
@@ -66,8 +75,7 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
   const proxy = startProxy({ upstream: app.url, lanes: names.map((name, i) => ({ name, port: ports[i] })), hold: req => armed && matches(req),
     order: order === 'together' ? 'together' : order === 'first-then-second' ? names : [...names].reverse(), log,
     beforeRelease: () => Promise.race([Promise.all(lanes.map(lane => picture(lane, 'frozen'))), new Promise(r => setTimeout(r, 1500))]) })
-  const chromes = await Promise.all(chromePorts.map(port => launch(port, { headless })))
-  lanes = race.users.map((user, i) => ({ user, origin: `http://127.0.0.1:${ports[i]}`, chrome: chromes[i] }))
+  let chromes = []
   const step = lane => s => log({ event: 'step', lane: lane.user.name, status: s.status, remark: s.remark })
   const shots = []
   const picture = async (lane, tag) => {
@@ -81,9 +89,18 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
     log({ event: 'kane_end', lane: lane.user.name, phase, status: r.status, summary: r.one_liner, why: r.status === 'passed' ? undefined : r.reason || r.summary || r.stderr, credits: r.credits_consumed, link: r.test_url })
     // A user who could not even perform the action leaves nothing to judge.
     if (r.status === 'error' || r.status === 'timeout' || (r.status === 'failed' && phase !== 'kept' && phase !== 'invariant')) errors.push(`${lane.user.name} ${phase}: ${r.reason || r.stderr || r.status}`)
+    // Without Kane CLI's answer there is nothing to say about what the user was told.
+    else if (phase === 'do' && !r.final_state) errors.push(`${lane.user.name} do: Kane CLI returned no answer`)
     return r
   }
   try {
+    await proxy.ready
+    // One Chrome per user. If one fails to start, the one that did is still closed below.
+    const launched = await Promise.allSettled(chromePorts.map(port => launch(port, { headless })))
+    chromes = launched.filter(l => l.status === 'fulfilled').map(l => l.value)
+    const failed = launched.find(l => l.status === 'rejected')
+    if (failed) throw failed.reason
+    lanes = race.users.map((user, i) => ({ user, origin: `http://127.0.0.1:${ports[i]}`, chrome: chromes[i] }))
     // 1. Both users get to the point where they have read the old state.
     await Promise.all(lanes.map(lane => lane.user.setup ? run(lane, 'setup', lane.user.setup, lane.origin + (race.path || '/')) : null))
     // 2. Both act. Each save is frozen until the other one has arrived.
@@ -93,16 +110,18 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
       `${lane.user.do} Then store as 'told' the exact message the page shows about the result, or the word nothing if it shows none.` +
       (lane.user.refused ? ` Also store as 'refused' the word yes if this is true, otherwise the word no: ${lane.user.refused}` : ''),
       lane.user.setup ? undefined : lane.origin + (race.path || '/'))))
-    const held = proxy.heldLanes().length === 2 && (await Promise.race([frozen, new Promise(r => setTimeout(r, 1000, null))]))?.reason === 'all lanes held'
+    const released = await Promise.race([frozen, new Promise(r => setTimeout(r, 1000, null))])
+    // A race happened only if both saves were frozen together and both went out.
+    const held = released?.reason === 'all lanes held' && released.order.length === 2
     await Promise.all(lanes.map(lane => picture(lane, 'told')))
     // 3. After a reload, is each user's work really there?
     const checks = held ? await Promise.all(lanes.map(lane => run(lane, 'kept', `Verify this, and fail if it is not true: ${lane.user.kept}`, lane.origin + (race.path || '/')))) : []
-    await Promise.all(lanes.map(lane => picture(lane, 'kept')))
+    if (held) await Promise.all(lanes.map(lane => picture(lane, 'kept')))
     const whole = held && race.invariant ? await run(lanes[0], 'invariant', `Verify this, and fail if it is not true: ${race.invariant}`, lanes[0].origin + (race.path || '/')) : null
     const users = lanes.map((lane, i) => {
       const state = acts[i].final_state || {}
       const u = { name: lane.user.name, told: /^\s*nothing\s*$/i.test(state.told ?? '') ? null : state.told ?? null, answered: timeline.find(e => e.event === 'answered' && e.lane === lane.user.name)?.status ?? null, kept: checks[i]?.status === 'passed', refused: said(state.refused),
-        links: [acts[i].test_url, checks[i]?.test_url].filter(Boolean), keptSummary: checks[i]?.summary ?? null }
+        links: [acts[i].test_url ?? null, checks[i]?.test_url ?? null], keptSummary: checks[i]?.summary ?? null } // links are always [action, check]
       return { ...u, outcome: held ? outcome(u) : null }
     })
     const invariant = whole ? whole.status === 'passed' : null

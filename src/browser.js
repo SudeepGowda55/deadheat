@@ -4,6 +4,9 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+// Every Chrome still running, so an interrupted run can close them.
+export const browsers = new Set()
+
 const CHROME = [process.env.KANE_CLI_CHROME_PATH, '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium',
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe']
 
@@ -13,6 +16,8 @@ export async function launchChrome(port, { headless = true } = {}) {
   const profile = mkdtempSync(join(tmpdir(), 'deadheat-'))
   const child = spawn(binary, [`--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check',
     '--window-size=1280,900', ...(headless ? ['--headless=new'] : []), 'about:blank'], { stdio: 'ignore' })
+  browsers.add(child)
+  child.once('exit', () => browsers.delete(child))
   const endpoint = `http://127.0.0.1:${port}`
   for (let i = 0; i < 80; i++) {
     if (await fetch(`${endpoint}/json/version`).then(r => r.ok, () => false)) {
@@ -22,6 +27,7 @@ export async function launchChrome(port, { headless = true } = {}) {
     await new Promise(r => setTimeout(r, 250))
   }
   child.kill()
+  rmSync(profile, { recursive: true, force: true })
   throw new Error(`Chrome did not open its debugging port ${port}`)
 }
 
