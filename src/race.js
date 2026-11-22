@@ -109,6 +109,12 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
     lanes = race.users.map((user, i) => ({ user, origin: `http://127.0.0.1:${ports[i]}`, chrome: chromes[i] }))
     // 1. Both users get to the point where they have read the old state.
     await Promise.all(lanes.map(lane => lane.user.setup ? run(lane, 'setup', lane.user.setup, lane.origin + (race.path || '/')) : null))
+    // A user who could not even reach the starting point (for example their Chrome died) leaves nothing to race.
+    if (errors.length) {
+      log({ event: 'verdict', order, verdict: 'error' })
+      return { race: race.name, order, verdict: 'error', held: false, users: race.users.map(u => ({ name: u.name, told: null, answered: null, kept: false, refused: false, links: [null, null], keptSummary: null, outcome: null })),
+        invariant: null, invariantSummary: null, errors, credits: timeline.reduce((sum, e) => sum + (e.event === 'kane_end' ? Number(e.credits) || 0 : 0), 0), seconds: (Date.now() - t0) / 1000, timeline, shots }
+    }
     // 2. Both act. Each save is frozen until the other one has arrived.
     armed = true
     const frozen = proxy.released.then(async r => { await Promise.all(lanes.map(lane => picture(lane, 'released'))); return r })
