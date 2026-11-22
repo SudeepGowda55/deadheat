@@ -135,7 +135,7 @@ Every run writes `.deadheat/report.html`, a single file with the screenshots ins
 Dead Heat contains no selectors and no browser automation of its own. Kane CLI:
 
 - performs every user's setup and action from the English in the race file, in a Chrome that Dead Heat opened for that user (`--cdp-endpoint`);
-- reads what the app told each user and returns it in `final_state`;
+- reads what the app told each user, in a separate look at the page once the app has answered both saves, and returns it in `final_state`;
 - decides the outcome: the `kept` and `invariant` sentences are Kane CLI assertions, and their pass or fail is the verdict;
 - supplies the evidence: the share links of each user's action and check runs are in the report next to that user, and every run's link is in `report.json`.
 
@@ -145,7 +145,7 @@ Dead Heat adds the one thing a single test runner cannot do alone: it controls t
 
 - Two users per race.
 - The app must be reachable over plain HTTP, and the save must be an ordinary HTTP request. WebSocket traffic passes through but is not frozen.
-- A full race of three orders is 12 Kane CLI runs, or 18 when the users have a `setup` step: roughly 150 credits on a small page and 270 on a real app.
+- A full race of three orders is 18 Kane CLI runs (action, read and check for each user in each order), or 24 when the users have a `setup` step: roughly 200 credits on a small page and 350 on a real app.
 - Kane CLI retries a click after about five seconds without a response. Dead Heat holds those retries, but very slow flows can still time out; the verdict is then "no race happened", never a false "clean".
 - The frozen moment is a few seconds long, so this finds lost updates and check-then-act bugs. It is not a load test.
 

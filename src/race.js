@@ -90,7 +90,7 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
     // A user who could not even perform the action leaves nothing to judge.
     if (r.status === 'error' || r.status === 'timeout' || (r.status === 'failed' && phase !== 'kept' && phase !== 'invariant')) errors.push(`${lane.user.name} ${phase}: ${r.reason || r.stderr || r.status}`)
     // Without Kane CLI's answer there is nothing to say about what the user was told.
-    else if (phase === 'do' && !r.final_state) errors.push(`${lane.user.name} do: Kane CLI returned no answer`)
+    else if (phase === 'read' && !r.final_state) errors.push(`${lane.user.name} read: Kane CLI returned no answer`)
     return r
   }
   try {
@@ -107,25 +107,31 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
     armed = true
     const frozen = proxy.released.then(async r => { await Promise.all(lanes.map(lane => picture(lane, 'released'))); return r })
     const acts = await Promise.all(lanes.map(lane => run(lane, 'do',
-      `${lane.user.do} Do this once: do not repeat the action or try again, even if the result looks wrong. ` +
-      `Then store as 'told' the exact message the page shows about the result, or the word nothing if it shows none.` +
-      (lane.user.refused ? ` Also store as 'refused' the word yes if this is true, otherwise the word no: ${lane.user.refused}` : ''),
+      `${lane.user.do} Do this once: do not repeat the action or try again, even if the result looks wrong.`,
       lane.user.setup ? undefined : lane.origin + (race.path || '/'))))
     const released = await Promise.race([frozen, new Promise(r => setTimeout(r, 1000, null))])
     // A race happened only if both saves were frozen together and both went out.
     const held = released?.reason === 'all lanes held' && released.order.length === 2
+    // What each user was told is read only once the app has answered both saves; read earlier, the page
+    // may still be waiting on its frozen request and show nothing.
+    for (let i = 0; i < 40 && held && !names.every(n => timeline.some(e => e.event === 'answered' && e.lane === n)); i++) await new Promise(r => setTimeout(r, 250))
+    await new Promise(r => setTimeout(r, 1500)) // let the page draw the answer
     await Promise.all(lanes.map(lane => picture(lane, 'told')))
+    const reads = held ? await Promise.all(lanes.map(lane => run(lane, 'read',
+      `Do not click, type, reload or navigate: read the page exactly as it is now. Store as 'told' the exact message the page shows about ` +
+      `the result of the last save, or the word nothing if it shows none. Store as 'refused' the word yes if this is true, otherwise the word no: ${lane.user.refused}`))) : []
     // 3. After a reload, is each user's work really there?
-    const checks = held ? await Promise.all(lanes.map(lane => run(lane, 'kept', `Only look, do not change anything. Verify this, and fail if it is not true: ${lane.user.kept}`, lane.origin + (race.path || '/')))) : []
+    const look = 'Do not type, edit, save or submit anything; opening pages and following links to look is fine.'
+    const checks = held ? await Promise.all(lanes.map(lane => run(lane, 'kept', `${look} Verify this, and fail if it is not true: ${lane.user.kept}`, lane.origin + (race.path || '/')))) : []
     if (held) await Promise.all(lanes.map(lane => picture(lane, 'kept')))
-    const whole = held && race.invariant ? await run(lanes[0], 'invariant', `Only look, do not change anything. Verify this, and fail if it is not true: ${race.invariant}`, lanes[0].origin + (race.path || '/')) : null
+    const whole = held && race.invariant ? await run(lanes[0], 'invariant', `${look} Verify this, and fail if it is not true: ${race.invariant}`, lanes[0].origin + (race.path || '/')) : null
     // A save that reaches the app after the release (a retry, or a check that "fixed" what it saw) can repair a
     // lost update before it is checked, so the order cannot be judged.
     const releasedAt = timeline.find(e => e.event === 'release')?.t ?? Infinity
     for (const name of names) if (timeline.some(e => e.event === 'pass' && e.lane === name && e.t > releasedAt && matches({ method: e.method, url: e.path })))
       errors.push(`${name} saved again after the race, so this order cannot be judged (Kane CLI repeated the action)`)
     const users = lanes.map((lane, i) => {
-      const state = acts[i].final_state || {}
+      const state = reads[i]?.final_state || {}
       const u = { name: lane.user.name, told: /^\s*nothing\s*$/i.test(state.told ?? '') ? null : state.told ?? null, answered: timeline.find(e => e.event === 'answered' && e.lane === lane.user.name)?.status ?? null, kept: checks[i]?.status === 'passed', refused: said(state.refused),
         links: [acts[i].test_url ?? null, checks[i]?.test_url ?? null], keptSummary: checks[i]?.summary ?? null } // links are always [action, check]
       return { ...u, outcome: held ? outcome(u) : null }

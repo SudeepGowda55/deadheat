@@ -20,6 +20,7 @@ test('a user whose work is gone is refused if told so and lost if not', () => {
   assert.equal(verdict({ held: true, users: [{ outcome: 'kept' }, { outcome: 'crashed' }], invariant: null, errors: [] }), 'crashed')
 })
 
+const shown = new Map()
 // Stands in for Kane CLI: books through the lane like a browser would and answers the two kinds of question.
 const fakeUser = async (objective, { url, cdpEndpoint }) => {
   const origin = url ? new URL(url).origin : cdpEndpoint.origin
@@ -27,9 +28,13 @@ const fakeUser = async (objective, { url, cdpEndpoint }) => {
     const page = await fetch(origin).then(r => r.text())
     return { status: page.includes(`Booked by ${objective.match(/Booked by (\w+)/)[1]}`) ? 'passed' : 'failed' }
   }
+  if (objective.includes('read the page exactly as it is now')) {
+    const page = shown.get(origin) // what this user's browser is showing after its save
+    return { status: 'passed', final_state: { told: page.match(/id="message">([^<]*)/)[1], refused: page.includes('someone else') ? 'yes' : 'no' } }
+  }
   const name = objective.match(/Type "(\w+)"/)[1]
-  const page = await fetch(`${origin}/book`, { method: 'POST', body: new URLSearchParams({ name }) }).then(r => r.text())
-  return { status: 'passed', final_state: { told: page.match(/id="message">([^<]*)/)[1], refused: page.includes('someone else') ? 'yes' : 'no' } }
+  shown.set(origin, await fetch(`${origin}/book`, { method: 'POST', body: new URLSearchParams({ name }) }).then(r => r.text()))
+  return { status: 'passed' }
 }
 const race = { name: 'last desk', hold: 'POST /book', users: ['Manvith', 'Sudeep'].map(name => ({ name, do: `Type "${name}" and book.`,
   kept: `The status says Booked by ${name}`, refused: 'the page says someone else booked it' })) }
