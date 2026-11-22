@@ -13,6 +13,10 @@ const CHROME = [process.env.KANE_CLI_CHROME_PATH, '/Applications/Google Chrome.a
 export async function launchChrome(port, { headless = true } = {}) {
   const binary = CHROME.find(p => p && existsSync(p))
   if (!binary) throw new Error('Chrome was not found. Install Google Chrome or set KANE_CLI_CHROME_PATH.')
+  const answers = () => fetch(`http://127.0.0.1:${port}/json/version`).then(r => r.ok, () => false)
+  // A Chrome from an earlier order may still be letting go of this port; attaching to it would fail mid-run.
+  for (let i = 0; i < 40 && await answers(); i++) await new Promise(r => setTimeout(r, 250))
+  if (await answers()) throw new Error(`Something already answers on Chrome's debugging port ${port}`)
   const profile = mkdtempSync(join(tmpdir(), 'deadheat-'))
   const child = spawn(binary, [`--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check',
     '--window-size=1280,900', ...(headless ? ['--headless=new'] : []), 'about:blank'], { stdio: 'ignore' })
@@ -22,7 +26,14 @@ export async function launchChrome(port, { headless = true } = {}) {
   for (let i = 0; i < 80; i++) {
     if (await fetch(`${endpoint}/json/version`).then(r => r.ok, () => false)) {
       // The profile is removed once Chrome has really gone; removing it earlier fails while Chrome still writes to it.
-      return { endpoint, close: () => { child.once('exit', () => { try { rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }) } catch {} }); child.kill() } }
+      const close = () => new Promise(done => {
+        const gone = () => { try { rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }) } catch {} done() }
+        if (child.exitCode !== null || child.signalCode !== null) return gone()
+        child.once('exit', gone)
+        child.kill()
+        setTimeout(() => { child.kill('SIGKILL') }, 5000).unref()
+      })
+      return { endpoint, close }
     }
     await new Promise(r => setTimeout(r, 250))
   }
