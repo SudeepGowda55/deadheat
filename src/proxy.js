@@ -1,18 +1,19 @@
-// A reverse proxy with one port per user ("lane"). The first request in each lane that `hold` matches is
-// frozen until every lane has one, then they are let through in the chosen order.
+// A reverse proxy with one port per user ("lane"). Requests that `hold` matches are frozen until every lane
+// has one, then they are let through in the chosen order.
 import http from 'node:http'
 import net from 'node:net'
 
 export function startProxy({ upstream, lanes, hold, order = 'together', holdTimeoutMs = 180_000, log = () => {}, beforeRelease }) {
   const target = new URL(upstream)
+  const port = target.port || 80
   const held = new Map(lanes.map(lane => [lane.name, []]))
-  let released = false
+  let releasing = false, released = false
   let finish
   const done = new Promise(resolve => { finish = resolve })
 
   const forward = (req, body, res) => new Promise(resolve => {
     // The Host header is kept so the app builds links, redirects and CSRF checks against the lane's own address.
-    const up = http.request({ host: target.hostname, port: target.port, method: req.method, path: req.url, headers: req.headers }, r => {
+    const up = http.request({ host: target.hostname, port, method: req.method, path: req.url, headers: req.headers }, r => {
       // An app that redirects to its own absolute address would walk the browser out of its lane.
       if (r.headers.location?.startsWith(target.origin)) r.headers.location = `http://${req.headers.host}${r.headers.location.slice(target.origin.length)}`
       res.writeHead(r.statusCode, r.headers)
@@ -25,10 +26,12 @@ export function startProxy({ upstream, lanes, hold, order = 'together', holdTime
 
   const live = name => held.get(name).filter(item => !item.gone)
   const release = async reason => {
-    if (released) return
+    if (releasing) return
+    releasing = true
+    await beforeRelease?.() // both users are stuck on their save: the moment worth a picture
+    // Saves that arrive during the picture are still frozen, and go out with the others.
     released = true
     const names = (order === 'together' ? lanes.map(l => l.name) : order).filter(n => live(n).length)
-    await beforeRelease?.() // both users are stuck on their save: the moment worth a picture
     log({ event: 'release', reason, order: names, together: order === 'together' })
     // A lane normally holds one save. A second one (an impatient double click sent by script) follows in arrival order.
     const lane = async name => { for (const item of live(name)) await item.go() }
@@ -54,7 +57,7 @@ export function startProxy({ upstream, lanes, hold, order = 'together', holdTime
     })
   }).on('upgrade', (req, socket, head) => {
     // WebSockets (live updates, dev servers) pass straight through; only plain HTTP writes are frozen.
-    const up = net.connect(target.port, target.hostname, () => {
+    const up = net.connect(port, target.hostname, () => {
       up.write(`${req.method} ${req.url} HTTP/1.1\r\n${Object.entries(req.headers).map(([k, v]) => `${k}: ${v}\r\n`).join('')}\r\n`)
       up.write(head)
       socket.pipe(up).pipe(socket)

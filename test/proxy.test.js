@@ -61,3 +61,21 @@ test('a redirect to the app\'s own address is kept inside the lane', async () =>
   await proxy.close(); app.close()
   assert.equal(location, 'http://127.0.0.1:4782/next?x=1')
 })
+
+test('a save that arrives while the release is being photographed is still frozen', async () => {
+  const seen = []
+  const app = http.createServer((req, res) => { seen.push(req.url); res.end('ok') })
+  await new Promise(r => app.listen(4791, '127.0.0.1', r))
+  let photographing
+  const proxy = startProxy({ upstream: 'http://127.0.0.1:4791', lanes: [{ name: 'A', port: 4792 }, { name: 'B', port: 4793 }], hold,
+    beforeRelease: () => new Promise(r => { photographing = r }) })
+  const first = [fetch('http://127.0.0.1:4792/a', { method: 'POST' }), fetch('http://127.0.0.1:4793/b', { method: 'POST' })]
+  while (!photographing) await new Promise(r => setTimeout(r, 20))
+  const late = fetch('http://127.0.0.1:4792/a-again', { method: 'POST' })
+  await new Promise(r => setTimeout(r, 150))
+  assert.deepEqual(seen, [], 'nothing reaches the app during the picture')
+  photographing()
+  await Promise.all([...first, late])
+  await proxy.close(); app.close()
+  assert.deepEqual(seen.sort(), ['/a', '/a-again', '/b'])
+})
