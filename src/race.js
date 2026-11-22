@@ -85,9 +85,15 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
   }
   const run = async (lane, phase, objective, startUrl) => {
     log({ event: 'kane', lane: lane.user.name, phase, objective })
-    const r = await drive(objective, { url: startUrl, cdpEndpoint: lane.chrome.endpoint, onStep: step(lane) })
+    let r = await drive(objective, { url: startUrl, cdpEndpoint: lane.chrome.endpoint, onStep: step(lane) })
+    // Kane CLI's exit code 2 is its own trouble (Chrome, network), not the app's: try once more. Never for the
+    // action itself, where a second attempt would be a second save.
+    if (r.status === 'error' && phase !== 'do') r = await drive(objective, { url: startUrl, cdpEndpoint: lane.chrome.endpoint, onStep: step(lane) })
     log({ event: 'kane_end', lane: lane.user.name, phase, status: r.status, summary: r.one_liner, why: r.status === 'passed' ? undefined : r.reason || r.summary || r.stderr, credits: r.credits_consumed, link: r.test_url })
     // A user who could not even perform the action leaves nothing to judge.
+    // The action is judged by the proxy instead (below): Kane CLI often calls it failed because the page has not
+    // changed yet, which is exactly what a frozen save looks like.
+    if (phase === 'do') return r
     if (r.status === 'error' || r.status === 'timeout' || (r.status === 'failed' && phase !== 'kept' && phase !== 'invariant')) errors.push(`${lane.user.name} ${phase}: ${r.reason || r.stderr || r.status}`)
     // Without Kane CLI's answer there is nothing to say about what the user was told.
     else if (phase === 'read' && !r.final_state) errors.push(`${lane.user.name} read: Kane CLI returned no answer`)
@@ -109,6 +115,8 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
     const acts = await Promise.all(lanes.map(lane => run(lane, 'do',
       `${lane.user.do} Do this once: do not repeat the action or try again, even if the result looks wrong.`,
       lane.user.setup ? undefined : lane.origin + (race.path || '/'))))
+    // A user acted if their save reached the proxy, whatever Kane CLI made of the page afterwards.
+    acts.forEach((a, i) => { if (!timeline.some(e => e.event === 'held' && e.lane === names[i])) errors.push(`${names[i]} do: the save never reached the app (${a.reason || a.stderr || a.status})`) })
     const released = await Promise.race([frozen, new Promise(r => setTimeout(r, 1000, null))])
     // A race happened only if both saves were frozen together and both went out.
     const held = released?.reason === 'all lanes held' && released.order.length === 2
