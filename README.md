@@ -72,6 +72,8 @@ One after the other, the app behaves. Only the dead heat breaks it, which is why
 | **silently lost** | Their work is not there, and the app never said. This is the bug. |
 | crashed | Their work is not there, and the app answered the save with a server error (5xx). A failure, but not a silent one, so it is reported separately. |
 
+A save the app answered with a client error such as 409 Conflict counts as refused even if Kane CLI did not spot the message on screen, unless the page told that user the save had worked.
+
 A retried click while a save is frozen is held as well, and a request the browser abandoned never reaches your app, so an impatient browser cannot fake a clean result.
 
 ## Describe a race

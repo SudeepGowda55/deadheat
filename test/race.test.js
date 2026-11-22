@@ -17,6 +17,9 @@ test('a user whose work is gone is refused if told so and lost if not', () => {
   assert.equal(verdict({ held: true, users: [{ outcome: 'kept' }, { outcome: 'kept' }], invariant: false, errors: [] }), 'broken')
   assert.equal(verdict({ held: false, users: [], invariant: null, errors: [] }), 'no-race')
   assert.equal(outcome({ kept: false, refused: false, answered: 500 }), 'crashed')
+  assert.equal(outcome({ kept: false, refused: false, answered: 409, told: null }), 'refused')
+  assert.equal(outcome({ kept: false, refused: false, answered: 409, told: 'Task updated successfully.' }), 'lost')
+  assert.equal(outcome({ kept: false, refused: false, answered: 200, told: null }), 'lost')
   assert.equal(verdict({ held: true, users: [{ outcome: 'kept' }, { outcome: 'crashed' }], invariant: null, errors: [] }), 'crashed')
 })
 

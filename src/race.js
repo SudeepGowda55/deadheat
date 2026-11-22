@@ -18,8 +18,10 @@ export function matcher(pattern) {
 }
 
 // kept: their work is there. refused: it is not, and the app told them so. lost: it is not, and the app said nothing.
-// A save the app answered with a server error was not lost silently: the user saw it fail.
-export const outcome = ({ kept, refused, answered }) => kept ? 'kept' : refused ? 'refused' : answered >= 500 ? 'crashed' : 'lost'
+// A save the app answered with a server error was not lost silently: the user saw it fail. A 4xx answer is the
+// app saying no, so it counts as refused, unless the page told the user the save had worked.
+const claimsSuccess = told => /\b(success|saved|updated|confirmed|done)\b/i.test(told ?? '') && !/\bnot\b/i.test(told ?? '')
+export const outcome = ({ kept, refused, answered, told }) => kept ? 'kept' : refused || (answered >= 400 && answered < 500 && !claimsSuccess(told)) ? 'refused' : answered >= 500 ? 'crashed' : 'lost'
 
 export function verdict({ held, users, invariant, errors }) {
   if (errors.length) return 'error'
@@ -132,8 +134,8 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
     await new Promise(r => setTimeout(r, 1500)) // let the page draw the answer
     await Promise.all(lanes.map(lane => picture(lane, 'told')))
     const reads = held ? await Promise.all(lanes.map(lane => run(lane, 'read',
-      `Do not click, type, reload or navigate: read the page exactly as it is now. Store as 'told' the exact message the page shows about ` +
-      `the result of the last save, or the word nothing if it shows none. Store as 'refused' the word yes if this is true, otherwise the word no: ${lane.user.refused}`))) : []
+      `Do not click, type, reload or navigate: read the page exactly as it is now, including small error text next to form fields. ` +
+      `Store as 'told' the exact message the page shows about the result of the last save, or the word nothing if it shows none. Store as 'refused' the word yes if this is true, otherwise the word no: ${lane.user.refused}`))) : []
     // 3. After a reload, is each user's work really there?
     const look = 'Do not type, edit, save or submit anything; opening pages and following links to look is fine.'
     const checks = held ? await Promise.all(lanes.map(lane => run(lane, 'kept', `${look} Verify this, and fail if it is not true: ${lane.user.kept}`, lane.origin + (race.path || '/')))) : []
