@@ -246,7 +246,7 @@ function build(r) {
     ${u.outcome ? `<div class="plate ${u.outcome}">${WORK[u.outcome]}<small>${u.outcome === 'lost' ? `${told(u)} After a reload their work is not there.` : u.outcome === 'crashed' ? `The app answered ${u.answered} to the save. Their work is not there, but they were not told it was saved.` : u.outcome === 'refused' ? 'Their work is not there, and the app said so.' : 'After a reload their work is still there.'}</small></div>` : ''}</div></div>`).join('');
   const step = span > 240 ? 60 : span > 90 ? 20 : 10;
   $('ruler').innerHTML = Array.from({ length: Math.floor(span / step) + 1 }, (_, i) => `<span style="left:${x(i * step)}">${i * step}s</span>`).join('');
-  const release = r.timeline.find(e => e.event === 'release');
+  const release = r.timeline.find(e => e.event === 'release' && e.reason === 'all lanes held' && e.order.length === 2);
   $('rows').innerHTML = r.users.map(u => {
     const held = r.timeline.find(e => e.event === 'held' && e.lane === u.name);
     const phases = ['do', 'kept'].map(phase => { const a = r.timeline.find(e => e.event === 'kane' && e.lane === u.name && e.phase === phase), b = r.timeline.find(e => e.event === 'kane_end' && e.lane === u.name && e.phase === phase);
@@ -260,14 +260,14 @@ function build(r) {
     <dt>The app said</dt><dd>${u.told ? `<q>${esc(u.told)}</q>` : 'No warning was shown.'}${u.answered ? ` <span class="mono">(answered ${u.answered} to the save)</span>` : ''}</dd>
     <dt>After a reload</dt><dd>${u.outcome === 'kept' ? 'Their work is there.' : u.outcome ? 'Their work is not there.' : 'Not checked.'}</dd>
     ${u.keptSummary ? `<dt>Kane CLI saw</dt><dd>${esc(u.keptSummary)}</dd>` : ''}
-    ${u.links?.length ? `<dt>Kane CLI runs</dt><dd>${u.links.map((l, i) => `<a href="${esc(l)}" target="_blank" rel="noreferrer" data-hot>${i ? 'the check' : 'the action'}</a>`).join(' · ')}</dd>` : ''}</dl></article>`).join('');
+    ${u.links?.some(Boolean) ? `<dt>Kane CLI runs</dt><dd>${u.links.map((l, i) => l ? `<a href="${esc(l)}" target="_blank" rel="noreferrer" data-hot>${i ? 'the check' : 'the action'}</a>` : '').filter(Boolean).join(' · ')}</dd>` : ''}</dl></article>`).join('');
   $('tape').innerHTML = r.timeline.filter(e => ['held', 'release', 'kane_end', 'verdict'].includes(e.event)).map(e => `${e.t.toFixed(1).padStart(6)}s  ` + (e.event === 'held' ? `${esc(e.lane)}'s ${e.method} ${esc(e.path)} frozen`
     : e.event === 'release' ? `<em>released ${e.together ? 'together' : e.order.map(esc).join(', then ')}</em>` : e.event === 'verdict' ? `verdict: ${VERDICT[e.verdict]}` : `${esc(e.lane)} · ${e.phase} · Kane CLI ${e.status}`)).join('\n') + (r.errors.length ? `\n\n${r.errors.map(esc).join('\n')}` : '');
   seek(pinned() ? 0 : span);
 }
 
 function caption(r, t) {
-  const held = r.timeline.filter(e => e.event === 'held' && e.t <= t), release = r.timeline.find(e => e.event === 'release'), [a, b] = r.users.map(u => u.name);
+  const held = r.timeline.filter(e => e.event === 'held' && e.t <= t), release = r.timeline.find(e => e.event === 'release' && e.reason === 'all lanes held' && e.order.length === 2), [a, b] = r.users.map(u => u.name);
   const checks = r.timeline.find(e => e.event === 'kane' && e.phase === 'kept');
   if (!release) return r.verdict === 'error' ? r.errors.join(' ') : 'The two saves were never frozen together, so nothing was proven.';
   if (checks && t >= checks.t) return `After a reload, Kane CLI looks in each browser for that user's own work. ${r.users.map(u => `${u.name}: ${WORK[u.outcome]}.`).join(' ')}`;

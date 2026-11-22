@@ -5,6 +5,8 @@ import { join } from 'node:path'
 const WORDS = { kept: 'kept', refused: 'refused, and told so', lost: 'SILENTLY LOST', crashed: 'not saved: the app answered with a server error' }
 const HEAD = { clean: 'clean', lost: 'A USER SILENTLY LOST', broken: 'INVARIANT BROKEN', crashed: 'THE APP CRASHED ON A SAVE', 'no-race': 'no race happened', error: 'could not run' }
 const REPO = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).repository?.url ?? null
+// Text from the tested app may contain pipes or newlines, which would break a Markdown table.
+const cell = s => String(s).replace(/\s+/g, ' ').replace(/\|/g, '\\|')
 const time = t => `${t.toFixed(1).padStart(6)}s`
 
 export function printEvent(e) {
@@ -38,9 +40,9 @@ export function writeReport(results, dir) {
   for (const r of results) {
     md.push(`## ${r.race} · ${r.order}: ${HEAD[r.verdict]}`, '', explain(r), '')
     if (r.users.length) md.push('| User | Told | Work after reload | Kane CLI runs |', '|---|---|---|---|',
-      ...r.users.map(u => `| ${u.name} | ${u.told ?? (u.answered ? `no warning; the app answered ${u.answered}` : '')} | ${WORDS[u.outcome] ?? ''} | ${u.links.map((l, i) => `[${i ? 'check' : 'action'}](${l})`).join(' ')} |`), '')
+      ...r.users.map(u => `| ${cell(u.name)} | ${cell(u.told ?? (u.answered ? `no warning; the app answered ${u.answered}` : ''))} | ${WORDS[u.outcome] ?? ''} | ${u.links.map((l, i) => l ? `[${i ? 'check' : 'action'}](${l})` : '').filter(Boolean).join(' ')} |`), '')
     md.push('```', ...r.timeline.filter(e => ['held', 'release', 'kane_end'].includes(e.event)).map(e => `${time(e.t)}  ${e.event === 'held' ? `${e.lane} frozen at ${e.method} ${e.path}`
-      : e.event === 'release' ? `released ${e.together ? 'together' : e.order.join(', then ')}` : `${e.lane} ${e.phase}: ${e.status}`}`), '```', '')
+      : e.event === 'release' ? `released ${e.together ? 'together' : e.order.join(', then ')}${e.reason.startsWith('timeout') ? ` (${e.reason})` : ''}` : `${e.lane} ${e.phase}: ${e.status}`}`), '```', '')
   }
   writeFileSync(join(dir, 'report.json'), JSON.stringify(results, null, 2))
   writeFileSync(join(dir, 'report.md'), md.join('\n'))
