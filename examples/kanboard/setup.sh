@@ -5,7 +5,8 @@ set -e
 cd "$(dirname "$0")"
 [ -d kanboard ] || git clone --quiet --depth 1 --branch v1.2.58 https://github.com/kanboard/kanboard.git
 rm -f kanboard/data/db.sqlite seed.sqlite
-PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8000 -t kanboard >/dev/null 2>&1 &
+# One process only: with workers, killing the server would leave them running on the port.
+php -S 127.0.0.1:8000 -t kanboard >/dev/null 2>&1 &
 server=$!
 trap 'kill $server' EXIT
 until curl -s -o /dev/null http://127.0.0.1:8000/; do sleep 0.3; done
