@@ -74,5 +74,6 @@ export function startProxy({ upstream, lanes, hold, order = 'together', holdTime
   ready.catch(() => {})
   return { ready, released: done, heldLanes: () => lanes.map(l => l.name).filter(n => held.get(n).length),
     // A hold timer that fires after close must not release anything into the next race.
-    close: () => { releasing = true; return Promise.all(servers.map(s => new Promise(r => s.close(r)))) } }
+    // A save still frozen when the run ends (one user failed) is cut off, or close() would wait for it forever.
+    close: () => { releasing = true; return Promise.all(servers.map(s => new Promise(r => { s.close(r); s.closeAllConnections() }))) } }
 }

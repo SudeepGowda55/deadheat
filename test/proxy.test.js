@@ -93,3 +93,15 @@ test('an app that drops the connection on a save is logged as a 502, and a taken
   await assert.rejects(clash.ready, /EADDRINUSE/)
   await Promise.all([proxy.close(), clash.close().catch(() => {})]); app.close()
 })
+
+test('closing the proxy with a save still frozen does not hang', async () => {
+  const app = http.createServer((req, res) => res.end('ok'))
+  await new Promise(r => app.listen(5011, '127.0.0.1', r))
+  const proxy = startProxy({ upstream: 'http://127.0.0.1:5011', lanes: [{ name: 'A', port: 5012 }, { name: 'B', port: 5013 }], hold })
+  await proxy.ready
+  const stuck = fetch('http://127.0.0.1:5012/save', { method: 'POST' }).catch(() => 'cut off')
+  await new Promise(r => setTimeout(r, 100))
+  await proxy.close()
+  assert.equal(await stuck, 'cut off')
+  app.close()
+})
