@@ -39,3 +39,11 @@ test('it gives up after --max attempts', async () => {
   assert.equal(await fix({ raceAll: counting, code, configPath: config, command: 'true', max: 2, cwd: dir, emit: () => {} }), 1)
   assert.equal(calls, 3) // the first race, then one race after each of the two attempts
 })
+
+test('an agent that fails after editing the race file is still caught, and a quoted {brief} works', async () => {
+  const { dir, config, raceAll } = setup()
+  await assert.rejects(fix({ raceAll, code, configPath: config, command: `rm '${config}'; exit 3`, max: 1, cwd: dir, emit: () => {} }), /edited the race file/)
+  assert.equal(readFileSync(config, 'utf8'), '{"races":[]}')
+  const { dir: dir2, config: config2, app, raceAll: raceAll2 } = setup()
+  assert.equal(await fix({ raceAll: raceAll2, code, configPath: config2, command: `test -f "{brief}" && printf safe > '${app}'`, max: 1, cwd: dir2, emit: () => {} }), 0)
+})

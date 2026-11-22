@@ -29,8 +29,15 @@ export async function fix({ raceAll, code, configPath, command, max, cwd = proce
     emit({ event: 'agent', attempt, brief: path, t: 0 })
     console.error(`\nHanding ${path} to the agent (attempt ${attempt} of ${max})`)
     const quoted = `'${path.replaceAll("'", "'\\''")}'` // the brief's path may contain spaces
-    execSync(command.includes('{brief}') ? command.replaceAll('{brief}', quoted) : `${command} < ${quoted}`, { cwd, stdio: ['inherit', process.stderr, process.stderr], env: { ...process.env, DEADHEAT_BRIEF: path } })
-    // The agent must fix the app, not the test.
-    if (readFileSync(configPath, 'utf8') !== races) { writeFileSync(configPath, races); throw new Error('The agent edited the race file. It was restored and the run stopped.') }
+    // {brief}, "{brief}" and '{brief}' all become the safely quoted path.
+    const run = /\{brief\}/.test(command) ? command.replace(/(["']?)\{brief\}\1/g, () => quoted) : `${command} < ${quoted}`
+    try {
+      execSync(run, { cwd, stdio: ['inherit', process.stderr, process.stderr], env: { ...process.env, DEADHEAT_BRIEF: path } })
+    } finally {
+      // The agent must fix the app, not the test, even if it failed or deleted the file.
+      let now = null
+      try { now = readFileSync(configPath, 'utf8') } catch {}
+      if (now !== races) { writeFileSync(configPath, races); throw new Error('The agent edited the race file. It was restored and the run stopped.') }
+    }
   }
 }
