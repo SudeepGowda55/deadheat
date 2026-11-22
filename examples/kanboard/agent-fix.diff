@@ -1,0 +1,184 @@
+diff --git a/app/Controller/TaskModificationController.php b/app/Controller/TaskModificationController.php
+index 820f348..8de1c43 100644
+--- a/app/Controller/TaskModificationController.php
++++ b/app/Controller/TaskModificationController.php
+@@ -103,7 +103,7 @@ class TaskModificationController extends BaseController
+      * @throws \Kanboard\Core\Controller\AccessForbiddenException
+      * @throws \Kanboard\Core\Controller\PageNotFoundException
+      */
+-    public function edit(array $values = array(), array $errors = array())
++    public function edit(array $values = array(), array $errors = array(), $statusCode = 200)
+     {
+         $task = $this->getTask();
+ 
+@@ -115,6 +115,7 @@ class TaskModificationController extends BaseController
+ 
+         if (empty($values)) {
+             $values = $task;
++            $values['expected_date_modification'] = $task['date_modification'];
+         }
+ 
+         $values = $this->hook->merge('controller:task:form:default', $values, array('default_values' => $values));
+@@ -130,13 +131,13 @@ class TaskModificationController extends BaseController
+             'categories_list' => $this->categoryModel->getList($task['project_id']),
+         );
+ 
+-        $this->renderTemplate($task, $params);
++        $this->renderTemplate($task, $params, $statusCode);
+     }
+ 
+-    protected function renderTemplate(array &$task, array &$params)
++    protected function renderTemplate(array &$task, array &$params, $statusCode = 200)
+     {
+         if (empty($task['external_uri'])) {
+-            $this->response->html($this->template->render('task_modification/show', $params));
++            $this->response->html($this->template->render('task_modification/show', $params), $statusCode);
+         } else {
+ 
+             try {
+@@ -176,8 +177,9 @@ class TaskModificationController extends BaseController
+             $this->flash->success(t('Task updated successfully.'));
+             $this->response->redirect($this->helper->url->to('TaskViewController', 'show', array('task_id' => $task['id'])), true);
+         } else {
+-            $this->flash->failure(t('Unable to update your task.'));
+-            $this->edit($values, $errors);
++            // On a conflict the flash carries the reason, so the user still sees it after closing the form or reloading.
++            $this->flash->failure(isset($errors['conflict']) ? $errors['title'][0] : t('Unable to update your task.'));
++            $this->edit($values, $errors, isset($errors['conflict']) ? 409 : 200);
+         }
+     }
+ 
+@@ -191,7 +193,17 @@ class TaskModificationController extends BaseController
+             throw new AccessForbiddenException(t('You are not allowed to update tasks assigned to someone else.'));
+         }
+ 
+-        $result = $this->taskModificationModel->update($values);
++        $expected = isset($values['expected_date_modification']) && $values['expected_date_modification'] !== '' ? (int) $values['expected_date_modification'] : null;
++        $changes = $values;
++        unset($changes['expected_date_modification']);
++        $result = $this->taskModificationModel->update($changes, true, $expected);
++
++        if (! $result && $expected !== null && (int) $this->taskFinderModel->getById($task['id'])['date_modification'] !== $expected) {
++            // Stale form: someone saved this task after this user opened it. Keep their text on screen, refuse with 409.
++            $errors['conflict'] = true;
++            $errors['title'] = array(t('Someone else changed this task while you were editing it. Your changes were not saved: reload the task, then apply them again.'));
++            return false;
++        }
+ 
+         if ($result && ! empty($task['external_uri'])) {
+             try {
+diff --git a/app/Model/TaskModificationModel.php b/app/Model/TaskModificationModel.php
+index 6b0f627..bd1032a 100644
+--- a/app/Model/TaskModificationModel.php
++++ b/app/Model/TaskModificationModel.php
+@@ -18,9 +18,10 @@ class TaskModificationModel extends Base
+      * @access public
+      * @param  array     $values
+      * @param  boolean   $fire_events
++     * @param  integer   $expected_date_modification  When set, only write if the task was not changed since the user loaded it
+      * @return boolean
+      */
+-    public function update(array $values, $fire_events = true)
++    public function update(array $values, $fire_events = true, $expected_date_modification = null)
+     {
+         $task = $this->taskFinderModel->getById($values['id']);
+ 
+@@ -36,6 +37,21 @@ class TaskModificationModel extends Base
+             return false;
+         }
+ 
++        if ($expected_date_modification !== null) {
++            $this->db->startTransaction();
++            // Claim the row atomically: this UPDATE holds the write lock until commit, so a concurrent stale save sees 0 rows
++            $new_date_modification = max(time(), (int) $expected_date_modification + 1);
++            $claimed = $this->db->execute(
++                'UPDATE '.$this->db->escapeIdentifier(TaskModel::TABLE).' SET date_modification=? WHERE id=? AND date_modification=?',
++                array($new_date_modification, $task['id'], (int) $expected_date_modification)
++            );
++
++            if ($claimed === false || $claimed->rowCount() !== 1) {
++                $this->db->cancelTransaction();
++                return false;
++            }
++        }
++
+         if (isset($values['tags_only_add_new']) && $values['tags_only_add_new'] == 1) {
+             $this->updateTags($values, $task, false);
+         } else {
+@@ -43,8 +59,17 @@ class TaskModificationModel extends Base
+         }
+ 
+         $this->prepare($values);
++
++        if ($expected_date_modification !== null) {
++            $values['date_modification'] = $new_date_modification;
++        }
++
+         $result = $this->db->table(TaskModel::TABLE)->eq('id', $task['id'])->update($values);
+ 
++        if ($expected_date_modification !== null) {
++            $result ? $this->db->closeTransaction() : $this->db->cancelTransaction();
++        }
++
+         if ($fire_events && $result) {
+             $this->fireEvents($task, $values);
+         }
+diff --git a/app/Template/task_modification/show.php b/app/Template/task_modification/show.php
+index 1b6ffaa..5978e9a 100644
+--- a/app/Template/task_modification/show.php
++++ b/app/Template/task_modification/show.php
+@@ -3,6 +3,7 @@
+ </div>
+ <form method="post" action="<?= $this->url->href('TaskModificationController', 'update', array('task_id' => $task['id'])) ?>" autocomplete="off">
+     <?= $this->form->csrf() ?>
++    <?= $this->form->hidden('expected_date_modification', $values) ?>
+ 
+     <div class="task-form-container">
+         <div class="task-form-main-column">
+diff --git a/assets/js/core/modal.js b/assets/js/core/modal.js
+index 34cf2e3..3628ebf 100644
+--- a/assets/js/core/modal.js
++++ b/assets/js/core/modal.js
+@@ -47,6 +47,8 @@
+ 
+                     if (response.hasOwnProperty('message')) {
+                         window.alert(response.message);
++                    } else if (typeof response === 'string' && response) {
++                        replace(response);
+                     }
+                 });
+             }
+diff --git a/tests/units/Model/TaskModificationModelTest.php b/tests/units/Model/TaskModificationModelTest.php
+index e093e7c..d396b42 100644
+--- a/tests/units/Model/TaskModificationModelTest.php
++++ b/tests/units/Model/TaskModificationModelTest.php
+@@ -44,6 +44,29 @@ class TaskModificationModelTest extends Base
+         $this->assertEquals(1, $event_data['changes']['owner_id']);
+     }
+ 
++    public function testStaleSaveIsRejectedAndFirstSaveIsKept()
++    {
++        $projectModel = new ProjectModel($this->container);
++        $taskCreationModel = new TaskCreationModel($this->container);
++        $taskModificationModel = new TaskModificationModel($this->container);
++        $taskFinderModel = new TaskFinderModel($this->container);
++
++        $this->assertEquals(1, $projectModel->create(array('name' => 'test')));
++        $this->assertEquals(1, $taskCreationModel->create(array('title' => 'Before', 'project_id' => 1)));
++
++        // Both users opened the form at the same version
++        $loaded = (int) $taskFinderModel->getById(1)['date_modification'];
++
++        $this->assertTrue($taskModificationModel->update(array('id' => 1, 'title' => 'First'), true, $loaded));
++        $this->assertFalse($taskModificationModel->update(array('id' => 1, 'title' => 'Second'), true, $loaded));
++        $this->assertEquals('First', $taskFinderModel->getById(1)['title']);
++
++        // A form loaded after the first save can still save
++        $reloaded = (int) $taskFinderModel->getById(1)['date_modification'];
++        $this->assertTrue($taskModificationModel->update(array('id' => 1, 'title' => 'Third'), true, $reloaded));
++        $this->assertEquals('Third', $taskFinderModel->getById(1)['title']);
++    }
++
+     public function testThatNoEventAreFiredWhenNoChanges()
+     {
+         $projectModel = new ProjectModel($this->container);

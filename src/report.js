@@ -22,7 +22,9 @@ const said = u => u.told ? `was told "${u.told}"` : u.answered ? `saw no warning
 export function explain(r) {
   if (r.verdict === 'no-race') return 'Both saves were never frozen at the same time, so nothing was proven. Check the "hold" pattern and that each "do" really ends in a save.'
   if (r.verdict === 'error') return r.errors.join('; ')
-  const lines = r.users.map(u => `${u.name} ${said(u)} and their work was ${WORDS[u.outcome]}.`)
+  const lines = r.users.map(u => u.outcome === 'refused' && !u.told ? `${u.name}'s save was refused by the app (it answered ${u.answered}), so their work was not saved.`
+    : u.outcome === 'kept' && !u.told ? `${u.name}'s save went through (the app answered ${u.answered}) and their work was kept.`
+    : `${u.name} ${said(u)} and their work was ${WORDS[u.outcome]}.`)
   if (r.invariant === false) lines.push(`The invariant did not hold: ${r.invariantSummary ?? ''}`.trim())
   return lines.join(' ')
 }

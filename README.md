@@ -26,6 +26,20 @@ In every order one person's edit disappeared, because Kanboard saves the whole f
 
 The setup script and race file are in [`examples/kanboard`](examples/kanboard), so the result can be reproduced with two commands.
 
+### Then a coding agent fixed it, and Dead Heat checked the fix
+
+We handed the failure to a coding agent with `deadheat fix --with "splint {brief}"`, where `splint` is a small local wrapper around the agent. Dead Heat wrote the brief, the agent changed Kanboard, and Dead Heat restored the data, restarted the app and raced every order again.
+
+| Round | Orders clean |
+|---|---|
+| Kanboard 1.2.58 as released | 0 of 3: one person's edit silently lost |
+| After the agent's first patch | 1 of 3 |
+| After the agent's second patch | 3 of 3: in every order the first save is kept, and the stale one is refused with 409 Conflict and the message "Someone else changed this task while you were editing it. Your changes were not saved: reload the task, then apply them again." |
+
+The patch is in [`examples/kanboard/agent-fix.diff`](examples/kanboard/agent-fix.diff): a hidden version number in the edit form, one atomic "update only if the version is unchanged" statement, a 409 with that message when it fails, and a unit test. The report for the fixed app is [`docs/kanboard-fixed-report.html`](docs/kanboard-fixed-report.html).
+
+Getting there honestly took some work on Dead Heat itself. Kane CLI sometimes re-saved a user's change after the race, which repaired the lost update before it could be checked, so Dead Heat now treats any save after the release as "cannot be judged". Kane CLI also sometimes missed the small red refusal text that the screenshots show, so a 409 answer now counts as a refusal unless the page told the user the save had worked.
+
 ## Try it in two minutes
 
 You need Node 22 or newer, Google Chrome, and Kane CLI logged in (`npm install -g @testmuai/kane-cli`, then `kane-cli login`).
