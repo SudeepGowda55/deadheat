@@ -17,10 +17,12 @@ export function startProxy({ upstream, lanes, hold, order = 'together', holdTime
       // An app that redirects to its own absolute address would walk the browser out of its lane.
       if (r.headers.location?.startsWith(target.origin)) r.headers.location = `http://${req.headers.host}${r.headers.location.slice(target.origin.length)}`
       res.writeHead(r.statusCode, r.headers)
+      r.on('error', () => res.destroy()) // the app died mid-answer: the browser must see it fail, not wait forever
+      res.on('close', () => resolve(r.statusCode)) // settles whether the answer finished or the browser left
       r.pipe(res)
-      r.on('end', () => resolve(r.statusCode))
     })
-    up.on('error', e => { if (!res.headersSent) res.writeHead(502); res.end(String(e)); resolve() })
+    // The app never answered: the browser gets a 502, and the log says so, so the save counts as crashed.
+    up.on('error', e => { if (!res.headersSent) res.writeHead(502); res.end(String(e)); resolve(502) })
     up.end(body)
   })
 
@@ -48,7 +50,8 @@ export function startProxy({ upstream, lanes, hold, order = 'together', holdTime
       const entry = { lane: lane.name, method: req.method, path: req.url, bytes: body.length }
       if (released || !hold(req, body)) { log({ event: 'pass', ...entry }); return forward(req, body, res) }
       // Every matching save waits, not only the first: a retried click must not slip past the freeze.
-      const item = { gone: false, go: () => forward(req, body, res).then(status => log({ event: 'answered', ...entry, status })) }
+      // A browser that gave up while waiting for its turn sends nothing to the app.
+      const item = { gone: false, go: () => res.destroyed ? log({ event: 'abandoned', ...entry }) : forward(req, body, res).then(status => log({ event: 'answered', ...entry, status })) }
       res.on('close', () => { if (!released) { item.gone = true; log({ event: 'abandoned', ...entry }) } }) // the browser gave up on it
       log({ event: held.get(lane.name).length ? 'held_again' : 'held', ...entry })
       held.get(lane.name).push(item)
@@ -66,5 +69,10 @@ export function startProxy({ upstream, lanes, hold, order = 'together', holdTime
     socket.on('error', () => up.destroy())
   }).listen(lane.port, '127.0.0.1'))
 
-  return { released: done, heldLanes: () => lanes.map(l => l.name).filter(n => held.get(n).length), close: () => Promise.all(servers.map(s => new Promise(r => s.close(r)))) }
+  // Rejects if a lane's port is taken, so the run stops cleanly instead of crashing.
+  const ready = Promise.all(servers.map(s => new Promise((ok, fail) => s.once('listening', ok).once('error', fail))))
+  ready.catch(() => {})
+  return { ready, released: done, heldLanes: () => lanes.map(l => l.name).filter(n => held.get(n).length),
+    // A hold timer that fires after close must not release anything into the next race.
+    close: () => { releasing = true; return Promise.all(servers.map(s => new Promise(r => s.close(r)))) } }
 }

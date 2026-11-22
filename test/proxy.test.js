@@ -79,3 +79,17 @@ test('a save that arrives while the release is being photographed is still froze
   await proxy.close(); app.close()
   assert.deepEqual(seen.sort(), ['/a', '/a-again', '/b'])
 })
+
+test('an app that drops the connection on a save is logged as a 502, and a taken port fails cleanly', async () => {
+  const app = http.createServer(req => req.socket.destroy())
+  await new Promise(r => app.listen(4801 + 200, '127.0.0.1', r))
+  const events = []
+  const proxy = startProxy({ upstream: 'http://127.0.0.1:5001', lanes: [{ name: 'A', port: 5002 }, { name: 'B', port: 5003 }], hold, log: e => events.push(e) })
+  await proxy.ready
+  const answers = await Promise.all(['5002', '5003'].map(p => fetch(`http://127.0.0.1:${p}/save`, { method: 'POST' }).then(r => r.status)))
+  assert.deepEqual(answers, [502, 502])
+  assert.deepEqual(events.filter(e => e.event === 'answered').map(e => e.status), [502, 502])
+  const clash = startProxy({ upstream: 'http://127.0.0.1:5001', lanes: [{ name: 'A', port: 5002 }], hold })
+  await assert.rejects(clash.ready, /EADDRINUSE/)
+  await Promise.all([proxy.close(), clash.close().catch(() => {})]); app.close()
+})
