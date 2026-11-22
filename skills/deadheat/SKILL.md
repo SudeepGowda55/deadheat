@@ -37,9 +37,9 @@ deadheat race --agent
 Standard output is one JSON object per line. The last line has `"event":"report"` and a `results`
 array, one entry per order (`together`, `first-then-second`, `second-then-first`):
 
-- `verdict`: `clean`, `lost` (a user was told yes and their work is gone), `broken` (the invariant
-  failed), `no-race` (the two saves were never frozen together, so fix `hold` or the `do` steps), `error`.
-- `users[].told`: the exact message that user saw. `users[].outcome`: `kept`, `refused` or `lost`.
+- `verdict`: `clean`, `lost` (a user was told yes and their work is gone), `crashed` (a save got a server
+  error, so the user saw it fail), `broken` (the invariant failed), `no-race` (the two saves were never frozen together, so fix `hold` or the `do` steps), `error`.
+- `users[].told`: the exact message that user saw. `users[].outcome`: `kept`, `refused`, `crashed` or `lost`.
 - `users[].keptSummary`: what Kane CLI saw on that user's screen after the reload.
 
 Exit code 0 means every order was clean, 1 means a user silently lost or the invariant broke, 2 means

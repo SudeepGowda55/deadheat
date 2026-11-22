@@ -208,8 +208,8 @@ const DATA = /*DEADHEAT_DATA*/{ results: [] }/*END*/;
 const $ = id => document.getElementById(id), calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const ORDER = (r, short) => { const [a, b] = r.users.map(u => u.name); return r.order === 'together' ? (short ? 'together' : 'at the same instant') : r.order === 'first-then-second' ? `${a}, then ${b}` : `${b}, then ${a}`; };
-const WORK = { kept: 'kept', refused: 'refused, and told so', lost: 'silently lost' };
-const VERDICT = { clean: 'clean', lost: 'a user silently lost', broken: 'invariant broken', 'no-race': 'no race happened', error: 'could not run' };
+const WORK = { kept: 'kept', refused: 'refused, and told so', lost: 'silently lost', crashed: 'server error' };
+const VERDICT = { clean: 'clean', lost: 'a user silently lost', broken: 'invariant broken', crashed: 'the app crashed on a save', 'no-race': 'no race happened', error: 'could not run' };
 const sec = t => `${t.toFixed(1)} s`;
 const told = u => u.told ? `The app said “${esc(u.told)}”.` : u.answered ? `The app answered ${u.answered} to the save and showed no warning.` : 'The app showed no warning.';
 let R = DATA.results[0], T = 0, dissolved = new Set();
@@ -219,6 +219,8 @@ function headline(r) {
   if (r.verdict === 'error') return ['Could not run.', 'Kane CLI stopped early.', ''];
   if (r.verdict === 'no-race') return ['No race.', 'The two saves never met.', ''];
   if (lost) return ['Dead heat.', `${lost.name} `, 'lost without a word.', 'bad'];
+  const crashed = r.users.find(u => u.outcome === 'crashed');
+  if (crashed) return ['Dead heat.', `${crashed.name}'s save `, `crashed the app (${crashed.answered}).`, 'bad'];
   if (r.verdict === 'broken') return ['Dead heat.', 'Both kept, and ', 'the invariant broke.', 'bad'];
   if (refused) return ['Dead heat.', `${refused.name} was `, 'told no.', ''];
   return ['Dead heat.', 'Both ', 'kept.', ''];
@@ -241,7 +243,7 @@ function build(r) {
   $('screens').innerHTML = r.users.map((u, i) => `<div class="lane"><div class="who">${esc(u.name)}</div><div class="shot" data-lane="${i}">
     ${shotsOf(r, u.name).map(s => `<img alt="${esc(u.name)}'s browser: ${TAGS[s.tag]}" data-t="${s.t}" data-tag="${s.tag}" src="${s.src}" style="opacity:0">`).join('') || '<div class="none">no screenshot was taken</div>'}
     <canvas aria-hidden="true"></canvas><div class="tag"></div>
-    ${u.outcome ? `<div class="plate ${u.outcome}">${WORK[u.outcome]}<small>${u.outcome === 'lost' ? `${told(u)} After a reload their work is not there.` : u.outcome === 'refused' ? 'Their work is not there, and the app said so.' : 'After a reload their work is still there.'}</small></div>` : ''}</div></div>`).join('');
+    ${u.outcome ? `<div class="plate ${u.outcome}">${WORK[u.outcome]}<small>${u.outcome === 'lost' ? `${told(u)} After a reload their work is not there.` : u.outcome === 'crashed' ? `The app answered ${u.answered} to the save. Their work is not there, but they were not told it was saved.` : u.outcome === 'refused' ? 'Their work is not there, and the app said so.' : 'After a reload their work is still there.'}</small></div>` : ''}</div></div>`).join('');
   const step = span > 240 ? 60 : span > 90 ? 20 : 10;
   $('ruler').innerHTML = Array.from({ length: Math.floor(span / step) + 1 }, (_, i) => `<span style="left:${x(i * step)}">${i * step}s</span>`).join('');
   const release = r.timeline.find(e => e.event === 'release');

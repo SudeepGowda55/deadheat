@@ -16,6 +16,8 @@ test('a user whose work is gone is refused if told so and lost if not', () => {
   assert.equal(verdict({ held: true, users: [{ outcome: 'kept' }, { outcome: 'refused' }], invariant: null, errors: [] }), 'clean')
   assert.equal(verdict({ held: true, users: [{ outcome: 'kept' }, { outcome: 'kept' }], invariant: false, errors: [] }), 'broken')
   assert.equal(verdict({ held: false, users: [], invariant: null, errors: [] }), 'no-race')
+  assert.equal(outcome({ kept: false, refused: false, answered: 500 }), 'crashed')
+  assert.equal(verdict({ held: true, users: [{ outcome: 'kept' }, { outcome: 'crashed' }], invariant: null, errors: [] }), 'crashed')
 })
 
 // Stands in for Kane CLI: books through the lane like a browser would and answers the two kinds of question.

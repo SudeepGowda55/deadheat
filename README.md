@@ -70,6 +70,7 @@ One after the other, the app behaves. Only the dead heat breaks it, which is why
 | kept | Their work is there after a reload. |
 | refused | Their work is not there, and the app told them so. This is correct behaviour. |
 | **silently lost** | Their work is not there, and the app never said. This is the bug. |
+| crashed | Their work is not there, and the app answered the save with a server error (5xx). A failure, but not a silent one, so it is reported separately. |
 
 A retried click while a save is frozen is held as well, and a request the browser abandoned never reaches your app, so an impatient browser cannot fake a clean result.
 
@@ -122,7 +123,7 @@ Agents can also drive Dead Heat themselves. [`skills/deadheat/SKILL.md`](skills/
 | Exit code | Meaning |
 |---|---|
 | 0 | Every order was clean. |
-| 1 | A user silently lost, or the invariant broke. |
+| 1 | A user silently lost, a save crashed the app, or the invariant broke. |
 | 2 | The race could not be run (Kane CLI error, or the two saves were never frozen together). |
 
 ## The report

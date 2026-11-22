@@ -4,6 +4,8 @@
 # Gogs must not already be running on port 3000.
 set -e
 cd "$(dirname "$0")"
+# Gogs 0.14 calls git with options that older versions reject, which turns every second wiki edit into a 500.
+git --version | awk '{ split($3, v, "."); if (v[1] < 2 || (v[1] == 2 && v[2] < 43)) { print "Gogs 0.14 needs git 2.43 or newer; this is " $3 ". On macOS: brew install git"; exit 1 } }'
 case "$(uname -s)-$(uname -m)" in
   Darwin-arm64) asset=darwin_arm64 ;; Darwin-x86_64) asset=darwin_amd64 ;;
   Linux-x86_64) asset=linux_amd64 ;; Linux-aarch64) asset=linux_arm64 ;;

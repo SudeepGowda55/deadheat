@@ -2,8 +2,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-const WORDS = { kept: 'kept', refused: 'refused, and told so', lost: 'SILENTLY LOST' }
-const HEAD = { clean: 'clean', lost: 'A USER SILENTLY LOST', broken: 'INVARIANT BROKEN', 'no-race': 'no race happened', error: 'could not run' }
+const WORDS = { kept: 'kept', refused: 'refused, and told so', lost: 'SILENTLY LOST', crashed: 'not saved: the app answered with a server error' }
+const HEAD = { clean: 'clean', lost: 'A USER SILENTLY LOST', broken: 'INVARIANT BROKEN', crashed: 'THE APP CRASHED ON A SAVE', 'no-race': 'no race happened', error: 'could not run' }
 const REPO = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).repository?.url ?? null
 const time = t => `${t.toFixed(1).padStart(6)}s`
 

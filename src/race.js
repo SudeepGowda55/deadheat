@@ -18,12 +18,14 @@ export function matcher(pattern) {
 }
 
 // kept: their work is there. refused: it is not, and the app told them so. lost: it is not, and the app said nothing.
-export const outcome = ({ kept, refused }) => kept ? 'kept' : refused ? 'refused' : 'lost'
+// A save the app answered with a server error was not lost silently: the user saw it fail.
+export const outcome = ({ kept, refused, answered }) => kept ? 'kept' : refused ? 'refused' : answered >= 500 ? 'crashed' : 'lost'
 
 export function verdict({ held, users, invariant, errors }) {
   if (errors.length) return 'error'
   if (!held) return 'no-race'
   if (users.some(u => u.outcome === 'lost')) return 'lost'
+  if (users.some(u => u.outcome === 'crashed')) return 'crashed'
   return invariant === false ? 'broken' : 'clean'
 }
 
