@@ -152,7 +152,7 @@ Dead Heat adds the one thing a single test runner cannot do alone: it controls t
 ## Development
 
 ```bash
-npm test        # 9 tests, no Kane CLI or browser needed
+npm test        # 14 tests, no Kane CLI or browser needed
 ```
 
 | Path | What it is |

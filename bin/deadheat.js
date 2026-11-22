@@ -33,7 +33,11 @@ if (command === 'init') {
 if (!existsSync(flags.config)) { console.error(`No ${flags.config} here. Run: deadheat init`); process.exit(2) }
 
 const configPath = resolve(flags.config)
-const config = JSON.parse(readFileSync(configPath, 'utf8'))
+let config
+try { config = JSON.parse(readFileSync(configPath, 'utf8')) } catch (error) { console.error(`${flags.config} is not valid JSON: ${error.message}`); process.exit(2) }
+const problem = !config.app?.url ? 'app.url is missing' : !Array.isArray(config.races) || !config.races.length ? 'races is missing or empty'
+  : config.races.map(r => r.users?.length !== 2 ? `race "${r.name}" needs exactly two users` : r.users.find(u => !u.do || !u.kept) ? `race "${r.name}": every user needs "do" and "kept"` : null).find(Boolean)
+if (problem) { console.error(`${flags.config}: ${problem}`); process.exit(2) }
 const races = config.races.filter(r => !name || r.name === name)
 if (!races.length) { console.error(`No race called "${name}" in ${flags.config}`); process.exit(2) }
 const orders = flags.orders ? flags.orders.split(',') : ORDERS
@@ -41,6 +45,8 @@ const bad = orders.find(o => !ORDERS.includes(o))
 if (bad) { console.error(`Unknown order "${bad}". Use: ${ORDERS.join(', ')}`); process.exit(2) }
 const emit = flags.agent ? e => console.log(JSON.stringify(e)) : printEvent
 const app = appControl(config.app)
+// The app runs in its own process group, so Ctrl-C would otherwise leave it running.
+for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { app.stop(); process.exit(130) })
 
 // Every order of every race, with the app reset and restarted before each one.
 async function raceAll() {
