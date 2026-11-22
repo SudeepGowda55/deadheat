@@ -1,6 +1,6 @@
 // The loop with a coding agent: race, hand over the failure, let the agent change the app, race again.
 import { execSync } from 'node:child_process'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { explain } from './report.js'
 
@@ -23,11 +23,13 @@ export async function fix({ raceAll, code, configPath, command, max, cwd = proce
     const results = await raceAll()
     const exit = code(results)
     if (exit !== 1 || attempt > max) return exit
+    mkdirSync('.deadheat', { recursive: true })
     const path = resolve('.deadheat', `brief-${attempt}.md`)
     writeFileSync(path, brief(results, attempt))
     emit({ event: 'agent', attempt, brief: path, t: 0 })
     console.error(`\nHanding ${path} to the agent (attempt ${attempt} of ${max})`)
-    execSync(command.includes('{brief}') ? command.replaceAll('{brief}', path) : `${command} < ${path}`, { cwd, stdio: ['inherit', process.stderr, process.stderr], env: { ...process.env, DEADHEAT_BRIEF: path } })
+    const quoted = `'${path.replaceAll("'", "'\\''")}'` // the brief's path may contain spaces
+    execSync(command.includes('{brief}') ? command.replaceAll('{brief}', quoted) : `${command} < ${quoted}`, { cwd, stdio: ['inherit', process.stderr, process.stderr], env: { ...process.env, DEADHEAT_BRIEF: path } })
     // The agent must fix the app, not the test.
     if (readFileSync(configPath, 'utf8') !== races) { writeFileSync(configPath, races); throw new Error('The agent edited the race file. It was restored and the run stopped.') }
   }
