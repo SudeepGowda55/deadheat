@@ -107,7 +107,8 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
     armed = true
     const frozen = proxy.released.then(async r => { await Promise.all(lanes.map(lane => picture(lane, 'released'))); return r })
     const acts = await Promise.all(lanes.map(lane => run(lane, 'do',
-      `${lane.user.do} Then store as 'told' the exact message the page shows about the result, or the word nothing if it shows none.` +
+      `${lane.user.do} Do this once: do not repeat the action or try again, even if the result looks wrong. ` +
+      `Then store as 'told' the exact message the page shows about the result, or the word nothing if it shows none.` +
       (lane.user.refused ? ` Also store as 'refused' the word yes if this is true, otherwise the word no: ${lane.user.refused}` : ''),
       lane.user.setup ? undefined : lane.origin + (race.path || '/'))))
     const released = await Promise.race([frozen, new Promise(r => setTimeout(r, 1000, null))])
@@ -115,9 +116,14 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
     const held = released?.reason === 'all lanes held' && released.order.length === 2
     await Promise.all(lanes.map(lane => picture(lane, 'told')))
     // 3. After a reload, is each user's work really there?
-    const checks = held ? await Promise.all(lanes.map(lane => run(lane, 'kept', `Verify this, and fail if it is not true: ${lane.user.kept}`, lane.origin + (race.path || '/')))) : []
+    const checks = held ? await Promise.all(lanes.map(lane => run(lane, 'kept', `Only look, do not change anything. Verify this, and fail if it is not true: ${lane.user.kept}`, lane.origin + (race.path || '/')))) : []
     if (held) await Promise.all(lanes.map(lane => picture(lane, 'kept')))
-    const whole = held && race.invariant ? await run(lanes[0], 'invariant', `Verify this, and fail if it is not true: ${race.invariant}`, lanes[0].origin + (race.path || '/')) : null
+    const whole = held && race.invariant ? await run(lanes[0], 'invariant', `Only look, do not change anything. Verify this, and fail if it is not true: ${race.invariant}`, lanes[0].origin + (race.path || '/')) : null
+    // A save that reaches the app after the release (a retry, or a check that "fixed" what it saw) can repair a
+    // lost update before it is checked, so the order cannot be judged.
+    const releasedAt = timeline.find(e => e.event === 'release')?.t ?? Infinity
+    for (const name of names) if (timeline.some(e => e.event === 'pass' && e.lane === name && e.t > releasedAt && matches({ method: e.method, url: e.path })))
+      errors.push(`${name} saved again after the race, so this order cannot be judged (Kane CLI repeated the action)`)
     const users = lanes.map((lane, i) => {
       const state = acts[i].final_state || {}
       const u = { name: lane.user.name, told: /^\s*nothing\s*$/i.test(state.told ?? '') ? null : state.told ?? null, answered: timeline.find(e => e.event === 'answered' && e.lane === lane.user.name)?.status ?? null, kept: checks[i]?.status === 'passed', refused: said(state.refused),
@@ -131,7 +137,8 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
     log({ event: 'verdict', order, verdict: result.verdict })
     return result
   } finally {
-    chromes.forEach(c => c.close())
+    // Wait for each Chrome to exit: the next order reuses its debugging port.
+    await Promise.all(chromes.map(c => c.close()))
     await proxy.close()
   }
 }

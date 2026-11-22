@@ -23,7 +23,7 @@ test('a user whose work is gone is refused if told so and lost if not', () => {
 // Stands in for Kane CLI: books through the lane like a browser would and answers the two kinds of question.
 const fakeUser = async (objective, { url, cdpEndpoint }) => {
   const origin = url ? new URL(url).origin : cdpEndpoint.origin
-  if (objective.startsWith('Verify')) {
+  if (objective.includes('Verify this')) {
     const page = await fetch(origin).then(r => r.text())
     return { status: page.includes(`Booked by ${objective.match(/Booked by (\w+)/)[1]}`) ? 'passed' : 'failed' }
   }
