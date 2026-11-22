@@ -20,9 +20,9 @@ Built for the [KaneCLI Online Hackathon](https://www.kaneclihack.sh/) by team Ma
 
 ![The Dead Heat report for Kanboard: both screens after a reload, one stamped silently lost](docs/kanboard-report.png)
 
-This is one real run on 21 November 2026: 12 Kane CLI runs, 266 credits, about 12 minutes. The full report, with every screenshot and a draggable timeline, is [`docs/kanboard-report.html`](docs/kanboard-report.html) (download it and open it in a browser).
+This is one real run on 21 November 2026: 18 Kane CLI runs (setup, action and check for each user in each order), 266 credits, about 12 minutes. The full report, with every screenshot and a draggable timeline, is [`docs/kanboard-report.html`](docs/kanboard-report.html) (download it and open it in a browser).
 
-In every order one person's edit disappeared, because Kanboard saves the whole form and the later save carries a stale copy of the other field. Both browsers showed Kanboard's green "Task updated successfully." banner and nobody was warned.
+In every order one person's edit disappeared, because Kanboard saves the whole form and the later save carries a stale copy of the other field. Kanboard answered every save with success and nobody was warned.
 
 The setup script and race file are in [`examples/kanboard`](examples/kanboard), so the result can be reproduced with two commands.
 
@@ -36,7 +36,7 @@ git clone https://github.com/SudeepGowda55/deadheat && cd deadheat/examples/desk
 deadheat race
 ```
 
-`examples/desk` is a tiny booking page with one hot desk and a classic mistake: it checks that the desk is free, waits a moment, then books it. The run takes about six minutes and 150 Kane CLI credits, and ends like this:
+`examples/desk` is a tiny booking page with one hot desk and a classic mistake: it checks that the desk is free, waits a moment, then books it. The run takes about six minutes and 150 Kane CLI credits, and ends with lines like these:
 
 ```
 ✗ last desk · together · A USER SILENTLY LOST
@@ -105,7 +105,7 @@ The second user is written the same way. The full file is [`examples/kanboard/de
 | `setup` | Optional. Gets the user to where the old state is on screen. |
 | `do` | The action that ends in the save. |
 | `kept` | What must be true after a reload if this user's work survived. |
-| `refused` | What the screen says if the app turned this user down honestly. |
+| `refused` | What the screen says if the app turned this user down honestly. Required: without it, an honest "sorry, taken" could not be told apart from a silent loss. |
 | `invariant` | Optional, per race. Something that must hold for everyone afterwards, such as "stock is not below zero". |
 
 ## The loop with your coding agent
@@ -137,7 +137,7 @@ Dead Heat contains no selectors and no browser automation of its own. Kane CLI:
 - performs every user's setup and action from the English in the race file, in a Chrome that Dead Heat opened for that user (`--cdp-endpoint`);
 - reads what the app told each user and returns it in `final_state`;
 - decides the outcome: the `kept` and `invariant` sentences are Kane CLI assertions, and their pass or fail is the verdict;
-- supplies the evidence: every run's share link is in the report next to the user it belongs to.
+- supplies the evidence: the share links of each user's action and check runs are in the report next to that user, and every run's link is in `report.json`.
 
 Dead Heat adds the one thing a single test runner cannot do alone: it controls the instant at which two users' requests reach the server.
 
@@ -145,14 +145,14 @@ Dead Heat adds the one thing a single test runner cannot do alone: it controls t
 
 - Two users per race.
 - The app must be reachable over plain HTTP, and the save must be an ordinary HTTP request. WebSocket traffic passes through but is not frozen.
-- A full race of three orders is about 12 Kane CLI runs: roughly 150 credits on a small page and 270 on a real app.
+- A full race of three orders is 12 Kane CLI runs, or 18 when the users have a `setup` step: roughly 150 credits on a small page and 270 on a real app.
 - Kane CLI retries a click after about five seconds without a response. Dead Heat holds those retries, but very slow flows can still time out; the verdict is then "no race happened", never a false "clean".
 - The frozen moment is a few seconds long, so this finds lost updates and check-then-act bugs. It is not a load test.
 
 ## Development
 
 ```bash
-npm test        # 14 tests, no Kane CLI or browser needed
+npm test        # 16 tests, no Kane CLI or browser needed
 ```
 
 | Path | What it is |

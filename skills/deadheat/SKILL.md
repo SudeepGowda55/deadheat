@@ -42,7 +42,7 @@ array, one entry per order (`together`, `first-then-second`, `second-then-first`
 - `users[].told`: the exact message that user saw. `users[].outcome`: `kept`, `refused`, `crashed` or `lost`.
 - `users[].keptSummary`: what Kane CLI saw on that user's screen after the reload.
 
-Exit code 0 means every order was clean, 1 means a user silently lost or the invariant broke, 2 means
+Exit code 0 means every order was clean, 1 means a user silently lost, a save crashed the app, or the invariant broke, 2 means
 the race could not be run.
 
 ## Fix it
