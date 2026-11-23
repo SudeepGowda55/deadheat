@@ -6,6 +6,8 @@ Most web apps are only ever tested by one user at a time. The bugs that lose peo
 
 Dead Heat makes that moment happen on purpose. [Kane CLI](https://www.testmuai.com/kane-cli/) drives two real browsers from plain-English instructions. Dead Heat freezes both save requests at a proxy, releases them at the same instant, and then has Kane CLI reload each browser and check whether that user's work is still there. A user who was told yes and whose work is gone has been **silently lost**, and the failure goes straight to your coding agent to fix.
 
+**See it without installing anything: https://dead-heat-nine.vercel.app** (the story, how it works, both real Kanboard reports and the agent's patch).
+
 Built for the [KaneCLI Online Hackathon](https://www.kaneclihack.sh/) by team Matcrypt (Sudeep and Manvith).
 
 ## What it found
