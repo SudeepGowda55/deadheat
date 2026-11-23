@@ -89,3 +89,11 @@ test("an action is retried only when Kane CLI failed before the save left the br
   assert.equal(result.verdict, 'clean')
   assert.deepEqual(result.users.map(u => u.outcome), ['kept', 'refused'])
 })
+
+test('answers stored under Kane CLI\'s own names are used only when unambiguous', async () => {
+  const { answers } = await import('../src/race.js')
+  assert.deepEqual(answers({ url: 'x', last_save_message: 'Sorry, someone else just booked it.', someone_else_booked: 'yes' }), { told: 'Sorry, someone else just booked it.', refused: 'yes' })
+  assert.deepEqual(answers({ Told: 'Saved.', Refused: 'no' }), { told: 'Saved.', refused: 'no' })
+  assert.equal(answers({ url: 'x', a: 'one', b: 'two' }).told, undefined)
+  assert.equal(answers({ url: 'x', a: 'yes', b: 'no' }).told, undefined)
+})
