@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /api/
 
-Sitemap: https://dead-heat.vercel.app/sitemap.xml
+Sitemap: https://dead-heat-nine.vercel.app/sitemap.xml
