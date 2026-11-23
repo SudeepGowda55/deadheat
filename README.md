@@ -22,7 +22,7 @@ Built for the [KaneCLI Online Hackathon](https://www.kaneclihack.sh/) by team Ma
 
 ![The Dead Heat report for Kanboard: both screens after a reload, one stamped silently lost](docs/kanboard-report.png)
 
-This is one real run on 21 November 2026: 18 Kane CLI runs (setup, action and check for each user in each order), 266 credits, about 12 minutes. The full report, with every screenshot and a draggable timeline, is [`docs/kanboard-report.html`](docs/kanboard-report.html) (download it and open it in a browser).
+This is one real run on 21 November 2026: 18 Kane CLI runs (setup, action and check for each user in each order), 266 credits, about 12 minutes. The full report, with every screenshot and a draggable timeline, is [open in your browser](https://dead-heat-nine.vercel.app/reports/kanboard-report.html) (the same file is in [`docs/`](docs/kanboard-report.html)).
 
 In every order one person's edit disappeared, because Kanboard saves the whole form and the later save carries a stale copy of the other field. Kanboard answered every save with success and nobody was warned.
 
