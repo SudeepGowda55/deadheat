@@ -56,7 +56,7 @@ git clone https://github.com/SudeepGowda55/deadheat && cd deadheat/examples/desk
 deadheat race
 ```
 
-`examples/desk` is a tiny booking page with one hot desk and a classic mistake: it checks that the desk is free, waits a moment, then books it. The run takes about six minutes and 150 Kane CLI credits, and ends with lines like these:
+`examples/desk` is a tiny booking page with one hot desk and a classic mistake: it checks that the desk is free, waits a moment, then books it. The run takes about nine minutes and 120 Kane CLI credits, and ends with lines like these:
 
 ```
 ✗ last desk · together · A USER SILENTLY LOST
