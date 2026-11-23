@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--head-->
+</head>
+<body data-page="install">
+<!--nav-->
+<main id="main">
+  <header class="page-head">
+    <h1 class="h1" data-head>Try it in two minutes.</h1>
+    <p class="lede" data-rise>You need Node 22 or newer, Google Chrome, and Kane CLI logged in. Dead Heat itself has no dependencies.</p>
+    <p class="needs" data-rise><span>Node 22 or newer</span><span>Google Chrome</span><span>Kane CLI, logged in</span></p>
+  </header>
+
+  <section class="sec steps-sec" aria-label="Install and run">
+    <div class="step" data-rise>
+      <div class="step-head"><h2>Kane CLI</h2><p>TestMu AI’s browser agent. Dead Heat uses it to drive both users and to check each one after the reload.</p></div>
+      <div class="cmds">
+        <div class="cmd"><code>npm install -g @testmuai/kane-cli</code><button class="copy" data-copy type="button"><span>copy</span></button></div>
+        <div class="cmd"><code>kane-cli login</code><button class="copy" data-copy type="button"><span>copy</span></button></div>
+      </div>
+    </div>
+    <div class="step" data-rise>
+      <div class="step-head"><h2>Dead Heat</h2><p>Straight from GitHub.</p></div>
+      <div class="cmds">
+        <div class="cmd"><code>npm install -g github:SudeepGowda55/deadheat</code><button class="copy" data-copy type="button"><span>copy</span></button></div>
+      </div>
+    </div>
+    <div class="step" data-rise>
+      <div class="step-head"><h2>The desk example</h2><p><code>examples/desk</code> is a tiny booking page with one hot desk and a classic mistake: it checks that the desk is free, waits a moment, then books it. The run takes about six minutes and 150 Kane CLI credits.</p></div>
+      <div class="cmds">
+        <div class="cmd"><code>git clone https://github.com/SudeepGowda55/deadheat &amp;&amp; cd deadheat/examples/desk</code><button class="copy" data-copy type="button"><span>copy</span></button></div>
+        <div class="cmd"><code>deadheat race</code><button class="copy" data-copy type="button"><span>copy</span></button></div>
+      </div>
+    </div>
+
+    <figure class="term" aria-label="Example output of the desk race, from the README">
+      <div class="term-bar"><span class="mono">deadheat race</span><span class="mono term-note">the README’s example output for the desk race</span></div>
+      <pre class="term-out" data-lenis-prevent><code></code></pre>
+      <figcaption>One after the other, the app behaves. Only the dead heat breaks it, which is why nobody caught it by hand.</figcaption>
+    </figure>
+
+    <div class="step" data-rise>
+      <div class="step-head"><h2>The Kanboard race</h2><p>The setup script fetches Kanboard 1.2.58, starts it once, and seeds two users, one project and one task through its own API. It needs git, PHP 8.1 or newer (<code>brew install php</code>), sqlite3 and curl. The real run took 266 credits and about 12 minutes.</p></div>
+      <div class="cmds">
+        <div class="cmd"><code>cd deadheat/examples/kanboard &amp;&amp; ./setup.sh</code><button class="copy" data-copy type="button"><span>copy</span></button></div>
+        <div class="cmd"><code>deadheat race</code><button class="copy" data-copy type="button"><span>copy</span></button></div>
+      </div>
+    </div>
+    <div class="step" data-rise>
+      <div class="step-head"><h2>Your own app</h2><p>Write a race file, describe your two users in plain English, and race every order. Each run writes <code>.deadheat/report.html</code>, a single file with the screenshots inside it, so it can be attached to a pull request as it is.</p></div>
+      <div class="cmds">
+        <div class="cmd"><code>deadheat init</code><button class="copy" data-copy type="button"><span>copy</span></button></div>
+        <div class="cmd"><code>deadheat race</code><button class="copy" data-copy type="button"><span>copy</span></button></div>
+      </div>
+    </div>
+    <div class="step" data-rise>
+      <div class="step-head"><h2>With your coding agent</h2><p>Dead Heat races every order, writes a brief when a user silently lost, runs your agent’s command with it, restarts the app and races again, until every order is clean or <code>--max</code> attempts. <code>{brief}</code> becomes the brief’s path.</p></div>
+      <div class="cmds">
+        <div class="cmd"><code>deadheat fix --with "your-agent {brief}"</code><button class="copy" data-copy type="button"><span>copy</span></button></div>
+        <div class="cmd"><code>deadheat race --agent</code><button class="copy" data-copy type="button"><span>copy</span></button></div>
+      </div>
+      <p class="step-note">With <code>--agent</code>, standard output is one JSON object per line and the last line carries every verdict. The skill file <a href="https://github.com/SudeepGowda55/deadheat/blob/main/skills/deadheat/SKILL.md" target="_blank" rel="noreferrer">skills/deadheat/SKILL.md</a> teaches a coding agent when a handler needs a race, how to write one, and how to read the result.</p>
+    </div>
+  </section>
+
+  <section class="sec flags-sec" aria-labelledby="flags-h">
+    <div class="sec-head">
+      <h2 class="h2" id="flags-h" data-head>Every command and flag.</h2>
+      <p class="lede">From <code>deadheat --help</code>.</p>
+    </div>
+    <table class="t" data-rise>
+      <thead><tr><th>Command or flag</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>deadheat race [name]</code></td><td>Race every order (or <code>--orders together</code>) and report who silently lost.</td></tr>
+        <tr><td><code>deadheat fix --with "cmd"</code></td><td>Race, hand the failure to your coding agent, restart the app, race again.</td></tr>
+        <tr><td><code>deadheat init</code></td><td>Write an example <code>deadheat.json</code>.</td></tr>
+        <tr><td><code>--config &lt;file&gt;</code></td><td>Default <code>deadheat.json</code>.</td></tr>
+        <tr><td><code>--orders &lt;a,b&gt;</code></td><td><code>together</code>, <code>first-then-second</code>, <code>second-then-first</code>.</td></tr>
+        <tr><td><code>--headed</code></td><td>Show both browsers.</td></tr>
+        <tr><td><code>--agent</code></td><td>NDJSON on stdout for coding agents.</td></tr>
+        <tr><td><code>--max &lt;n&gt;</code></td><td>Fix attempts, default 3.</td></tr>
+        <tr><td><code>--with &lt;cmd&gt;</code></td><td>Agent command; <code>{brief}</code> is the brief’s path.</td></tr>
+      </tbody>
+    </table>
+    <p class="exit-line" data-rise>Exit code: <b>0</b> clean, <b>1</b> a user silently lost, a save crashed the app, or an invariant broke, <b>2</b> the race could not be run.</p>
+  </section>
+
+  <section class="sec next" aria-label="Where to go next">
+    <a class="next-card" href="/how/"><h3>How it works</h3><p>Proxy lanes, the three release orders, how each user is judged, and the loop with your coding agent.</p></a>
+    <a class="next-card" href="/proof/"><h3>Proof</h3><p>Both real Kanboard reports, every screenshot inside them, and the agent’s patch line by line.</p></a>
+    <a class="next-card" href="https://github.com/SudeepGowda55/deadheat" target="_blank" rel="noreferrer"><h3>GitHub</h3><p>The source, the examples and 17 tests that need no Kane CLI or browser. MIT licence.</p></a>
+  </section>
+</main>
+<!--foot-->
+<script type="module" src="/src/install.js"></script>
+</body>
+</html>
