@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--head-->
+</head>
+<body data-page="how">
+<!--nav-->
+<main id="main">
+  <header class="page-head">
+    <h1 class="h1" data-head>Freeze two saves. Release them on purpose.</h1>
+    <p class="lede" data-rise>Dead Heat contains no selectors and no browser automation of its own. Kane CLI drives both users from the English in the race file. Dead Heat adds the one thing a single test runner cannot do alone: it controls the instant at which two users’ requests reach the server.</p>
+  </header>
+
+  <section class="sec lanes-sec" aria-labelledby="lanes-h">
+    <div class="sec-head">
+      <h2 class="h2" id="lanes-h" data-head>One lane per user.</h2>
+      <p class="lede">Each user gets their own Chrome and their own port on the proxy. Separate cookies, separate sessions, and Dead Heat always knows whose request is whose. Reads pass straight through; only the save is frozen.</p>
+    </div>
+    <figure class="lanes plate" data-rise>
+      <svg viewBox="0 0 1200 300" role="img" aria-label="Manvith, through Kane CLI and Chrome, uses proxy lane 4801. Sudeep, through Kane CLI and Chrome, uses lane 4802. Both lanes meet at the Dead Heat proxy, which forwards to your app.">
+        <defs>
+          <pattern id="ht" width="7" height="7" patternUnits="userSpaceOnUse"><circle cx="3.5" cy="3.5" r="1.4" fill="#101113" opacity=".35"/></pattern>
+        </defs>
+        <g class="ln ln-a">
+          <path class="track" d="M40 80 H700 C760 80 770 150 830 150 H1040"/>
+          <path class="flow" d="M40 80 H700 C760 80 770 150 830 150 H1040"/>
+          <text x="40" y="58">Manvith</text><text x="190" y="58" class="m">Kane CLI</text><text x="330" y="58" class="m">Chrome</text>
+          <rect class="port" x="470" y="66" width="128" height="28"/><text x="534" y="85" class="m c inv">lane 4801</text>
+          <rect class="pk pk-a" x="640" y="69" width="34" height="22"/>
+        </g>
+        <g class="ln ln-b">
+          <path class="track" d="M40 220 H700 C760 220 770 150 830 150 H1040"/>
+          <path class="flow" d="M40 220 H700 C760 220 770 150 830 150 H1040"/>
+          <text x="40" y="258">Sudeep</text><text x="190" y="258" class="m">Kane CLI</text><text x="330" y="258" class="m">Chrome</text>
+          <rect class="port" x="470" y="206" width="128" height="28"/><text x="534" y="225" class="m c inv">lane 4802</text>
+          <rect class="pk pk-b" x="640" y="209" width="34" height="22"/>
+        </g>
+        <line class="red" x1="690" y1="30" x2="690" y2="270"/>
+        <text x="700" y="40" class="m">Dead Heat proxy</text>
+        <rect x="1040" y="110" width="120" height="80" fill="#fff" stroke="#101113" stroke-width="2"/>
+        <rect x="1040" y="160" width="120" height="30" fill="url(#ht)"/>
+        <text x="1100" y="145" class="c">your app</text>
+      </svg>
+    </figure>
+    <ul class="stops" aria-label="What happens in one race">
+      <li data-rise><b>Setup</b><span>Kane CLI brings both users to the point where the old state is on their screen, for example logged in with the edit form open.</span></li>
+      <li data-rise><b>Both act</b><span>Kane CLI performs each user’s action. When a save reaches the proxy it is frozen, and the first user waits until the second user’s save arrives too.</span></li>
+      <li data-rise><b>The release</b><span>Both saves reach your app together, or one after the other in either order. In all three cases both users had already read the old state.</span></li>
+      <li data-rise><b>The check</b><span>Kane CLI reloads each browser and verifies, in your own words, that this user’s work is still there.</span></li>
+    </ul>
+  </section>
+
+  <section class="sec replay-sec" aria-labelledby="replay-h">
+    <div class="sec-head">
+      <h2 class="h2" id="replay-h" data-head>Three orders, replayed from the real run.</h2>
+      <p class="lede">Every bar below is a timestamp from the Kanboard reports: when each save was frozen, the release, and what the app answered. Pick an order, then compare Kanboard as released with Kanboard after the agent’s fix.</p>
+    </div>
+    <div class="replay plate">
+      <div class="replay-controls">
+        <div class="seg" role="tablist" aria-label="Which run">
+          <button class="chip" role="tab" aria-selected="true" data-run="released">Kanboard 1.2.58 as released</button>
+          <button class="chip" role="tab" aria-selected="false" data-run="fixed">after the agent’s fix</button>
+        </div>
+        <div class="seg" role="tablist" aria-label="Release order">
+          <button class="chip" role="tab" aria-selected="true" data-order="together">together</button>
+          <button class="chip" role="tab" aria-selected="false" data-order="first-then-second">Manvith, then Sudeep</button>
+          <button class="chip" role="tab" aria-selected="false" data-order="second-then-first">Sudeep, then Manvith</button>
+        </div>
+      </div>
+      <svg class="replay-svg" viewBox="0 0 1000 220" role="img" aria-live="polite" aria-label=""></svg>
+      <div class="replay-verdicts"></div>
+      <p class="replay-note mono">Times are seconds since that order’s run started. Each order is a separate run with the data restored and the app restarted first.</p>
+    </div>
+  </section>
+
+  <section class="sec rules-sec" aria-labelledby="rules-h">
+    <div class="sec-head">
+      <h2 class="h2" id="rules-h" data-head>How each user is judged.</h2>
+      <p class="lede">After the reload, Kane CLI’s <code>kept</code> sentence passes or fails, and the <code>refused</code> sentence says whether the app turned that user down honestly. A user who was told yes and whose work is gone has been silently lost.</p>
+    </div>
+    <ul class="rules">
+      <li class="rule" data-rise><em class="v">kept</em><p>Their work is there after a reload.</p></li>
+      <li class="rule r-refused" data-rise><em class="v">refused</em><p>Their work is not there, and the app told them so. This is correct behaviour.</p></li>
+      <li class="rule r-lost" data-rise><em class="v v-lost">silently lost</em><p>Their work is not there, and the app never said. This is the bug.</p></li>
+      <li class="rule r-crashed" data-rise><em class="v">crashed</em><p>Their work is not there, and the app answered the save with a server error (5xx). A failure, but not a silent one, so it is reported separately.</p></li>
+      <li class="rule r-unjudged" data-rise><em class="v">cannot be judged</em><p>A save reached the app again after the release (Kane CLI repeated the action), which can repair a lost update before it is checked. The order is reported as an error, never as clean.</p></li>
+    </ul>
+    <div class="rule-notes">
+      <p data-rise>A save the app answered with a client error such as 409 Conflict counts as refused even if Kane CLI did not spot the message on screen, unless the page told that user the save had worked.</p>
+      <p data-rise>A retried click while a save is frozen is held as well, and a request the browser abandoned never reaches your app, so an impatient browser cannot fake a clean result. If the two saves were never frozen together, the verdict is “no race happened”, never a false “clean”.</p>
+    </div>
+  </section>
+
+  <section class="sec race-sec" aria-labelledby="race-h">
+    <div class="sec-head">
+      <h2 class="h2" id="race-h" data-head>A race is two users and a few sentences.</h2>
+      <p class="lede"><code>deadheat init</code> writes a <code>deadheat.json</code>. This is the real Kanboard race file from <a href="https://github.com/SudeepGowda55/deadheat/blob/main/examples/kanboard/deadheat.json" target="_blank" rel="noreferrer">examples/kanboard</a>.</p>
+    </div>
+    <div class="race-grid">
+      <pre class="code" data-lenis-prevent data-rise><code data-json></code></pre>
+      <table class="t" data-rise>
+        <thead><tr><th>Field</th><th>What it is</th></tr></thead>
+        <tbody>
+          <tr><td><code>app.url</code></td><td>Where your app listens. It must be plain HTTP, which a local app is.</td></tr>
+          <tr><td><code>app.start</code>, <code>app.reset</code></td><td>Optional shell commands. Dead Heat restores the data and restarts the app before every order, so each race starts from the same state.</td></tr>
+          <tr><td><code>hold</code></td><td>The save request to freeze: a method and a path, with <code>*</code> as a wildcard. Leave it out to freeze the first request that is not a read.</td></tr>
+          <tr><td><code>setup</code></td><td>Optional. Gets the user to where the old state is on screen.</td></tr>
+          <tr><td><code>do</code></td><td>The action that ends in the save.</td></tr>
+          <tr><td><code>kept</code></td><td>What must be true after a reload if this user’s work survived.</td></tr>
+          <tr><td><code>refused</code></td><td>What the screen says if the app turned this user down honestly. Required: without it, an honest “sorry, taken” could not be told apart from a silent loss.</td></tr>
+          <tr><td><code>invariant</code></td><td>Optional, per race. Something that must hold for everyone afterwards, such as “stock is not below zero”.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="sec loop-sec" aria-labelledby="loop-h">
+    <div class="sec-head">
+      <h2 class="h2" id="loop-h" data-head>The loop with your coding agent.</h2>
+      <p class="lede"><code>deadheat fix --with "your-agent {brief}"</code> races every order. If a user silently lost, it writes a brief and runs your agent’s command with it, then restores the data, restarts the app and races every order again. It stops when every order is clean or after <code>--max</code> attempts.</p>
+    </div>
+    <div class="loop">
+      <svg class="loop-svg" viewBox="0 0 520 520" aria-hidden="true">
+        <circle class="loop-track" cx="260" cy="260" r="200"/>
+        <circle class="loop-run" cx="260" cy="260" r="200" pathLength="1"/>
+        <circle class="loop-dot" cx="260" cy="60" r="9"/>
+      </svg>
+      <ul class="loop-stops">
+        <li class="ls ls-top"><b>Race every order</b><span>together, Manvith then Sudeep, Sudeep then Manvith</span></li>
+        <li class="ls ls-right"><b>Write the brief</b><span>what each user was told, which requests were frozen, what Kane CLI saw after the reload</span></li>
+        <li class="ls ls-bottom"><b>Your agent changes the app</b><span>the command you passed with <code>--with</code></span></li>
+        <li class="ls ls-left"><b>Restore and restart</b><span>the data is reset and the app restarted before the next race</span></li>
+      </ul>
+      <div class="loop-center"><em class="v">every order clean</em><span class="mono">or --max attempts</span></div>
+    </div>
+    <p class="guard" data-rise>The agent has to fix the app, not the test: if the race file changes during an attempt, Dead Heat restores it and stops.</p>
+    <table class="t exits" data-rise>
+      <thead><tr><th>Exit code</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>0</code></td><td>Every order was clean.</td></tr>
+        <tr><td><code>1</code></td><td>A user silently lost, a save crashed the app, or the invariant broke.</td></tr>
+        <tr><td><code>2</code></td><td>The race could not be run (Kane CLI error, or the two saves were never frozen together).</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="sec kane-sec" aria-labelledby="kane-h">
+    <div class="sec-head">
+      <h2 class="h2" id="kane-h" data-head>What Kane CLI does here.</h2>
+      <p class="lede">Agents can also drive Dead Heat themselves: <code>deadheat race --agent</code> prints one JSON object per line, and the last line carries every verdict. A skill file teaches a coding agent when a handler needs a race, how to write one, and how to read the result.</p>
+    </div>
+    <ul class="kane">
+      <li data-rise>Performs every user’s setup and action from the English in the race file, in a Chrome that Dead Heat opened for that user (<code>--cdp-endpoint</code>).</li>
+      <li data-rise>Reads what the app told each user, in a separate look at the page once the app has answered both saves.</li>
+      <li data-rise>Decides the outcome: the <code>kept</code> and <code>invariant</code> sentences are Kane CLI assertions, and their pass or fail is the verdict.</li>
+      <li data-rise>Supplies the evidence: the share links of each user’s action and check runs are in the report next to that user.</li>
+    </ul>
+    <div class="limits plate" data-rise>
+      <h3>Limits</h3>
+      <ul>
+        <li>Two users per race.</li>
+        <li>The app must be reachable over plain HTTP, and the save must be an ordinary HTTP request. WebSocket traffic passes through but is not frozen.</li>
+        <li>A full race of three orders is 18 Kane CLI runs, or 24 when the users have a setup step: roughly 200 credits on a small page and 350 on a real app.</li>
+        <li>The frozen moment is a few seconds long, so this finds lost updates and check-then-act bugs. It is not a load test.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+<!--foot-->
+<script type="module" src="/src/how.js"></script>
+</body>
+</html>
