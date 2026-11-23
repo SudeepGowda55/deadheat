@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--head-->
+</head>
+<body data-page="home">
+<!--nav-->
+<main id="main">
+  <section class="stage-wrap" id="story" aria-label="The story of one dead heat">
+    <div class="stage">
+      <canvas class="world" role="img" aria-label="Simulation: two save requests race down two lanes, freeze at the proxy's finish line, are released together, and one of them is silently lost while the other is kept. A slit camera at the line prints the race as a strip below."></canvas>
+      <div class="tags" aria-hidden="true">
+        <span class="tag" data-at="laneA">Manvith · Chrome · lane 4801</span>
+        <span class="tag" data-at="laneB">Sudeep · Chrome · lane 4802</span>
+        <span class="tag tag-line" data-at="proxy">Dead Heat proxy</span>
+        <span class="tag" data-at="app">your app</span>
+        <span class="tag tag-pk" data-at="pkA"></span>
+        <span class="tag tag-pk" data-at="pkB"></span>
+        <span class="verdict" data-at="vA"></span>
+        <span class="verdict" data-at="vB"></span>
+      </div>
+
+      <div class="hero">
+        <h1 class="hero-h" aria-label="Two real users. One instant. Who silently lost?">
+          <span class="hh hh-l" data-head="left">Two real users.</span>
+          <span class="hh hh-r" data-head="right">One instant.</span>
+          <span class="hh hh-q" data-head="right"><mark>Who silently lost?</mark></span>
+        </h1>
+        <p class="hero-copy">Kane CLI drives two real browsers from plain English. Dead Heat freezes both save requests at a proxy, releases them at the same instant, then has Kane CLI reload each browser and check whose work is still there.</p>
+        <div class="ctas">
+          <a class="btn btn-ink" href="/proof/">See the Kanboard proof</a>
+          <a class="btn" href="/install/">Install</a>
+        </div>
+      </div>
+
+      <div class="chapters">
+        <article class="chapter" data-ch="0">
+          <h2>Two users, two real browsers.</h2>
+          <p>Kane CLI drives Manvith and Sudeep from plain-English steps, each in their own Chrome on their own port of the proxy. Separate cookies, separate sessions, and Dead Heat always knows whose request is whose.</p>
+          <p class="facts"><span>lane 4801</span><span>lane 4802</span></p>
+        </article>
+        <article class="chapter" data-ch="1">
+          <h2>Both saves, frozen at the line.</h2>
+          <p>When a save reaches the proxy it is frozen. The first user waits until the second user’s save arrives too. Reads pass straight through. In the real Kanboard race, Sudeep’s save waited <b data-fact="waited"></b> for Manvith’s.</p>
+          <p class="facts"><span data-fact="pathA"></span></p>
+        </article>
+        <article class="chapter" data-ch="2">
+          <h2>Released at one instant.</h2>
+          <p>Both saves reach your app together, or one after the other in either order. In all three cases both users had already read the old state. Kanboard answered both saves within <b data-fact="gap"></b> of the release.</p>
+          <p class="facts"><span>together</span><span>Manvith, then Sudeep</span><span>Sudeep, then Manvith</span></p>
+        </article>
+        <article class="chapter" data-ch="3">
+          <h2>Kept, refused, or silently lost.</h2>
+          <p>Kane CLI reloads each browser and checks, in your own words, that this user’s work is still there. Kanboard 1.2.58 answered 200 to both saves and showed no warning. After a reload, Manvith’s new description was gone.</p>
+          <p class="facts"><span class="f-lost">Manvith: silently lost</span><span>Sudeep: kept</span></p>
+        </article>
+        <article class="chapter" data-ch="4">
+          <h2>Then a coding agent fixed it.</h2>
+          <p><code>deadheat fix --with "splint {brief}"</code> handed the failure to a coding agent and raced every order again. Clean orders went from 0 of 3, to 1 of 3, to 3 of 3. The stale save is now refused with 409 Conflict, and that user is told.</p>
+          <p class="facts"><span>0 of 3</span><span>1 of 3</span><span>3 of 3</span></p>
+        </article>
+      </div>
+
+      <div class="print">
+        <div class="print-head">
+          <span class="sim">Simulation</span>
+          <span class="print-cap">replays who reached the line first, the release order and the verdicts of the real Kanboard 1.2.58 races, time compressed</span>
+          <span class="print-order"></span>
+        </div>
+        <div class="print-window" aria-hidden="true"></div>
+        <div class="print-ruler" aria-hidden="true"><span>finish print: a slit camera that only ever sees the line</span><span>now</span></div>
+      </div>
+      <div class="scroll-cue" aria-hidden="true">scroll to race</div>
+    </div>
+  </section>
+
+  <!--video-->
+
+  <section class="sec found" aria-labelledby="found-h">
+    <div class="sec-head">
+      <h2 class="h2" id="found-h" data-head>Kanboard lost an edit in every order.</h2>
+      <p class="lede">Kanboard 1.2.58, about 10,000 stars on GitHub. Two people open the same task. Manvith rewrites the description, Sudeep changes the title, and both press Save. Users reported this in <a href="https://github.com/kanboard/kanboard/issues/2741" target="_blank" rel="noreferrer">kanboard#2741</a> and <a href="https://github.com/kanboard/kanboard/issues/944" target="_blank" rel="noreferrer">kanboard#944</a>; both issues were closed without a fix.</p>
+    </div>
+    <div class="results" role="table" aria-label="Kanboard 1.2.58 results by release order">
+      <div class="r-row r-th" role="row"><span role="columnheader">Saves released</span><span role="columnheader">Manvith’s description</span><span role="columnheader">Sudeep’s title</span><span role="columnheader">What Kanboard told them</span></div>
+      <div class="r-row" role="row"><span role="cell" class="r-order">at the same instant</span><span role="cell" data-l="Manvith’s description"><em class="v v-lost">silently lost</em></span><span role="cell" data-l="Sudeep’s title"><em class="v">kept</em></span><span role="cell" data-l="What Kanboard told them">answered 200 to both saves, no warning</span></div>
+      <div class="r-row" role="row"><span role="cell" class="r-order">Manvith, then Sudeep</span><span role="cell" data-l="Manvith’s description"><em class="v v-lost">silently lost</em></span><span role="cell" data-l="Sudeep’s title"><em class="v">kept</em></span><span role="cell" data-l="What Kanboard told them">“Task updated successfully.”</span></div>
+      <div class="r-row" role="row"><span role="cell" class="r-order">Sudeep, then Manvith</span><span role="cell" data-l="Manvith’s description"><em class="v">kept</em></span><span role="cell" data-l="Sudeep’s title"><em class="v v-lost">silently lost</em></span><span role="cell" data-l="What Kanboard told them">answered 200 to both saves, no warning</span></div>
+    </div>
+    <p class="run-facts"><span>one real run, 21 November 2026</span><span>18 Kane CLI runs</span><span>266 credits</span><span>about 12 minutes</span></p>
+    <p class="why">Kanboard saves the whole form, and the later save carries a stale copy of the other field. It answered every save with success and nobody was warned.</p>
+  </section>
+
+  <section class="sec rounds" aria-labelledby="rounds-h">
+    <div class="sec-head">
+      <h2 class="h2" id="rounds-h" data-head>Then Dead Heat checked the fix.</h2>
+      <p class="lede">Dead Heat wrote the brief, the coding agent changed Kanboard, and Dead Heat restored the data, restarted the app and raced every order again.</p>
+    </div>
+    <div class="grid-rounds" aria-label="Clean orders per round">
+      <i class="sweep" aria-hidden="true"></i>
+      <div class="gr-row" data-clean="0"><b>Kanboard 1.2.58 as released</b><span>lost</span><span>lost</span><span>lost</span><em>0 of 3 clean</em></div>
+      <div class="gr-row" data-clean="1"><b>After the agent’s first patch</b><span>clean</span><span>not clean</span><span>not clean</span><em>1 of 3 clean</em></div>
+      <div class="gr-row" data-clean="3"><b>After the agent’s second patch</b><span>clean</span><span>clean</span><span>clean</span><em>3 of 3 clean</em></div>
+    </div>
+    <blockquote class="refusal">
+      <p>“Someone else changed this task while you were editing it. Your changes were not saved: reload the task, then apply them again.”</p>
+      <footer>What the stale save gets now, with 409 Conflict. In every order the first save is kept.</footer>
+    </blockquote>
+  </section>
+
+  <section class="sec next" aria-label="Where to go next">
+    <a class="next-card" href="/how/"><h3>How it works</h3><p>Proxy lanes, the three release orders, how each user is judged, and the loop with your coding agent.</p></a>
+    <a class="next-card" href="/proof/"><h3>Proof</h3><p>Both real Kanboard reports, every screenshot inside them, and the agent’s patch line by line.</p></a>
+    <a class="next-card" href="/install/"><h3>Install</h3><p>Node 22, Chrome and Kane CLI. The desk example runs in about six minutes.</p></a>
+  </section>
+</main>
+<!--foot-->
+<script type="module" src="/src/home.js"></script>
+</body>
+</html>

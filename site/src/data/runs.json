@@ -1,0 +1,336 @@
+{
+  "released": {
+    "generated": "2026-11-21T07:02:53.171Z",
+    "results": [
+      {
+        "order": "together",
+        "verdict": "lost",
+        "seconds": 266.262,
+        "credits": 86.12366499999999,
+        "users": [
+          {
+            "name": "Manvith",
+            "told": null,
+            "answered": 200,
+            "outcome": "lost"
+          },
+          {
+            "name": "Sudeep",
+            "told": null,
+            "answered": 200,
+            "outcome": "kept"
+          }
+        ],
+        "held": [
+          {
+            "t": 112.277,
+            "lane": "Sudeep",
+            "method": "POST",
+            "path": "/?controller=TaskModificationController&action=update&task_id=1"
+          },
+          {
+            "t": 118.486,
+            "lane": "Manvith",
+            "method": "POST",
+            "path": "/?controller=TaskModificationController&action=update&task_id=1"
+          }
+        ],
+        "release": {
+          "t": 118.59,
+          "order": [
+            "Manvith",
+            "Sudeep"
+          ],
+          "together": true
+        },
+        "answered": [
+          {
+            "t": 118.612,
+            "lane": "Sudeep",
+            "status": 200
+          },
+          {
+            "t": 118.613,
+            "lane": "Manvith",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "order": "first-then-second",
+        "verdict": "lost",
+        "seconds": 201.875,
+        "credits": 88.03560499999999,
+        "users": [
+          {
+            "name": "Manvith",
+            "told": "Task updated successfully.",
+            "answered": 200,
+            "outcome": "lost"
+          },
+          {
+            "name": "Sudeep",
+            "told": null,
+            "answered": 200,
+            "outcome": "kept"
+          }
+        ],
+        "held": [
+          {
+            "t": 97.263,
+            "lane": "Manvith",
+            "method": "POST",
+            "path": "/?controller=TaskModificationController&action=update&task_id=1"
+          },
+          {
+            "t": 97.736,
+            "lane": "Sudeep",
+            "method": "POST",
+            "path": "/?controller=TaskModificationController&action=update&task_id=1"
+          }
+        ],
+        "release": {
+          "t": 97.809,
+          "order": [
+            "Manvith",
+            "Sudeep"
+          ],
+          "together": false
+        },
+        "answered": [
+          {
+            "t": 97.845,
+            "lane": "Manvith",
+            "status": 200
+          },
+          {
+            "t": 97.851,
+            "lane": "Sudeep",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "order": "second-then-first",
+        "verdict": "lost",
+        "seconds": 232.526,
+        "credits": 91.4032085,
+        "users": [
+          {
+            "name": "Manvith",
+            "told": null,
+            "answered": 200,
+            "outcome": "kept"
+          },
+          {
+            "name": "Sudeep",
+            "told": null,
+            "answered": 200,
+            "outcome": "lost"
+          }
+        ],
+        "held": [
+          {
+            "t": 108.857,
+            "lane": "Sudeep",
+            "method": "POST",
+            "path": "/?controller=TaskModificationController&action=update&task_id=1"
+          },
+          {
+            "t": 109.535,
+            "lane": "Manvith",
+            "method": "POST",
+            "path": "/?controller=TaskModificationController&action=update&task_id=1"
+          }
+        ],
+        "release": {
+          "t": 109.607,
+          "order": [
+            "Sudeep",
+            "Manvith"
+          ],
+          "together": false
+        },
+        "answered": [
+          {
+            "t": 109.618,
+            "lane": "Sudeep",
+            "status": 200
+          },
+          {
+            "t": 109.623,
+            "lane": "Manvith",
+            "status": 200
+          }
+        ]
+      }
+    ]
+  },
+  "fixed": {
+    "generated": "2026-11-22T20:08:18.041Z",
+    "results": [
+      {
+        "order": "together",
+        "verdict": "clean",
+        "seconds": 232.252,
+        "credits": 79.92758999999998,
+        "users": [
+          {
+            "name": "Manvith",
+            "told": null,
+            "answered": 409,
+            "outcome": "refused"
+          },
+          {
+            "name": "Sudeep",
+            "told": null,
+            "answered": 200,
+            "outcome": "kept"
+          }
+        ],
+        "held": [
+          {
+            "t": 99.979,
+            "lane": "Manvith",
+            "method": "POST",
+            "path": "/?controller=TaskModificationController&action=update&task_id=1"
+          },
+          {
+            "t": 100.007,
+            "lane": "Sudeep",
+            "method": "POST",
+            "path": "/?controller=TaskModificationController&action=update&task_id=1"
+          }
+        ],
+        "release": {
+          "t": 100.097,
+          "order": [
+            "Manvith",
+            "Sudeep"
+          ],
+          "together": true
+        },
+        "answered": [
+          {
+            "t": 100.138,
+            "lane": "Manvith",
+            "status": 409
+          },
+          {
+            "t": 100.142,
+            "lane": "Sudeep",
+            "status": 200
+          }
+        ]
+      },
+      {
+        "order": "first-then-second",
+        "verdict": "clean",
+        "seconds": 239.916,
+        "credits": 82.570245,
+        "users": [
+          {
+            "name": "Manvith",
+            "told": null,
+            "answered": 200,
+            "outcome": "kept"
+          },
+          {
+            "name": "Sudeep",
+            "told": null,
+            "answered": 409,
+            "outcome": "refused"
+          }
+        ],
+        "held": [
+          {
+            "t": 98.385,
+            "lane": "Sudeep",
+            "method": "POST",
+            "path": "/?controller=TaskModificationController&action=update&task_id=1"
+          },
+          {
+            "t": 98.795,
+            "lane": "Manvith",
+            "method": "POST",
+            "path": "/?controller=TaskModificationController&action=update&task_id=1"
+          }
+        ],
+        "release": {
+          "t": 98.835,
+          "order": [
+            "Manvith",
+            "Sudeep"
+          ],
+          "together": false
+        },
+        "answered": [
+          {
+            "t": 98.852,
+            "lane": "Manvith",
+            "status": 200
+          },
+          {
+            "t": 98.86,
+            "lane": "Sudeep",
+            "status": 409
+          }
+        ]
+      },
+      {
+        "order": "second-then-first",
+        "verdict": "clean",
+        "seconds": 289.643,
+        "credits": 98.9883325,
+        "users": [
+          {
+            "name": "Manvith",
+            "told": null,
+            "answered": 409,
+            "outcome": "refused"
+          },
+          {
+            "name": "Sudeep",
+            "told": null,
+            "answered": 200,
+            "outcome": "kept"
+          }
+        ],
+        "held": [
+          {
+            "t": 105.393,
+            "lane": "Sudeep",
+            "method": "POST",
+            "path": "/?controller=TaskModificationController&action=update&task_id=1"
+          },
+          {
+            "t": 116.54,
+            "lane": "Manvith",
+            "method": "POST",
+            "path": "/?controller=TaskModificationController&action=update&task_id=1"
+          }
+        ],
+        "release": {
+          "t": 116.598,
+          "order": [
+            "Sudeep",
+            "Manvith"
+          ],
+          "together": false
+        },
+        "answered": [
+          {
+            "t": 116.619,
+            "lane": "Sudeep",
+            "status": 200
+          },
+          {
+            "t": 116.623,
+            "lane": "Manvith",
+            "status": 409
+          }
+        ]
+      }
+    ]
+  }
+}
