@@ -21,6 +21,7 @@ export function matcher(pattern) {
 // A save the app answered with a server error was not lost silently: the user saw it fail. A 4xx answer is the
 // app saying no, so it counts as refused, unless the page told the user the save had worked.
 const claimsSuccess = told => /\b(success|saved|updated|confirmed|done)\b/i.test(told ?? '') && !/\bnot\b/i.test(told ?? '')
+const keys = state => Object.fromEntries(Object.entries(state || {}).map(([k, v]) => [k.toLowerCase(), v]))
 export const outcome = ({ kept, refused, answered, told }) => kept ? 'kept' : refused || (answered >= 400 && answered < 500 && !claimsSuccess(told)) ? 'refused' : answered >= 500 ? 'crashed' : 'lost'
 
 export function verdict({ held, users, invariant, errors }) {
@@ -90,7 +91,9 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
     let r = await drive(objective, { url: startUrl, cdpEndpoint: lane.chrome.endpoint, onStep: step(lane) })
     // Kane CLI's exit code 2 is its own trouble (Chrome, network), not the app's: try once more. Never for the
     // action itself, where a second attempt would be a second save.
-    if (r.status === 'error' && phase !== 'do') r = await drive(objective, { url: startUrl, cdpEndpoint: lane.chrome.endpoint, onStep: step(lane) })
+    // For the action, only when no save from this user reached the proxy: then nothing was sent, so nothing repeats.
+    const sent = () => timeline.some(e => e.event === 'held' && e.lane === lane.user.name)
+    if (r.status === 'error' && (phase !== 'do' || !sent())) r = await drive(objective, { url: startUrl, cdpEndpoint: lane.chrome.endpoint, onStep: step(lane) })
     log({ event: 'kane_end', lane: lane.user.name, phase, status: r.status, summary: r.one_liner, why: r.status === 'passed' ? undefined : r.reason || r.summary || r.stderr, credits: r.credits_consumed, link: r.test_url })
     // A user who could not even perform the action leaves nothing to judge.
     // The action is judged by the proxy instead (below): Kane CLI often calls it failed because the page has not
@@ -98,7 +101,7 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
     if (phase === 'do') return r
     if (r.status === 'error' || r.status === 'timeout' || (r.status === 'failed' && phase !== 'kept' && phase !== 'invariant')) errors.push(`${lane.user.name} ${phase}: ${r.reason || r.stderr || r.status}`)
     // Without Kane CLI's answer there is nothing to say about what the user was told.
-    else if (phase === 'read' && !r.final_state) errors.push(`${lane.user.name} read: Kane CLI returned no answer`)
+    else if (phase === 'read' && (keys(r.final_state).told == null || keys(r.final_state).refused == null)) errors.push(`${lane.user.name} read: Kane CLI did not store what the page said`)
     return r
   }
   try {
@@ -147,7 +150,7 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
     for (const name of names) if (timeline.some(e => e.event === 'pass' && e.lane === name && e.t > releasedAt && matches({ method: e.method, url: e.path })))
       errors.push(`${name} saved again after the race, so this order cannot be judged (Kane CLI repeated the action)`)
     const users = lanes.map((lane, i) => {
-      const state = reads[i]?.final_state || {}
+      const state = keys(reads[i]?.final_state)
       const u = { name: lane.user.name, told: /^\s*nothing\s*$/i.test(state.told ?? '') ? null : state.told ?? null, answered: timeline.find(e => e.event === 'answered' && e.lane === lane.user.name)?.status ?? null, kept: checks[i]?.status === 'passed', refused: said(state.refused),
         links: [acts[i].test_url ?? null, checks[i]?.test_url ?? null], keptSummary: checks[i]?.summary ?? null } // links are always [action, check]
       return { ...u, outcome: held ? outcome(u) : null }

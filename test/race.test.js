@@ -67,3 +67,25 @@ test('the safe desk stays clean when both land together', async () => {
   desk.close()
   assert.equal(result.verdict, 'clean')
 })
+
+test('a read that stored no answer makes the order unjudgeable, never a silent loss', async () => {
+  const desk = await startDesk(4761)
+  const blank = async (objective, o) => objective.includes('read the page exactly as it is now') ? { status: 'passed', final_state: {} } : fakeUser(objective, o)
+  const result = await runRace(race, { ...options(4761, [4762, 4763], 'first-then-second'), drive: blank })
+  desk.close()
+  assert.equal(result.verdict, 'error')
+  assert.ok(result.errors.some(e => e.includes('did not store what the page said')))
+})
+
+test("an action is retried only when Kane CLI failed before the save left the browser", async () => {
+  const desk = await startDesk(4771)
+  let failedOnce = false
+  const flaky = async (objective, o) => {
+    if (objective.includes('Type "Sudeep"') && !failedOnce) { failedOnce = true; return { status: 'error', exitCode: 2, stderr: 'Chrome failed: fetch failed' } }
+    return fakeUser(objective, o)
+  }
+  const result = await runRace(race, { ...options(4771, [4772, 4773], 'first-then-second'), drive: flaky })
+  desk.close()
+  assert.equal(result.verdict, 'clean')
+  assert.deepEqual(result.users.map(u => u.outcome), ['kept', 'refused'])
+})
