@@ -94,7 +94,7 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
     // For the action, only when no save from this user reached the proxy: then nothing was sent, so nothing repeats.
     const sent = () => timeline.some(e => e.event === 'held' && e.lane === lane.user.name)
     if (r.status === 'error' && (phase !== 'do' || !sent())) r = await drive(objective, { url: startUrl, cdpEndpoint: lane.chrome.endpoint, onStep: step(lane) })
-    log({ event: 'kane_end', lane: lane.user.name, phase, status: r.status, summary: r.one_liner, why: r.status === 'passed' ? undefined : r.reason || r.summary || r.stderr, credits: r.credits_consumed, link: r.test_url })
+    log({ event: 'kane_end', lane: lane.user.name, phase, status: r.status, summary: r.one_liner, why: r.status === 'passed' ? undefined : r.reason || r.summary || r.stderr, credits: r.credits_consumed, link: r.test_url, ...(phase === 'read' && { stored: r.final_state ?? null }) })
     // A user who could not even perform the action leaves nothing to judge.
     // The action is judged by the proxy instead (below): Kane CLI often calls it failed because the page has not
     // changed yet, which is exactly what a frozen save looks like.
@@ -138,7 +138,7 @@ export async function runRace(race, { app, order = 'together', ports = [4801, 48
     await Promise.all(lanes.map(lane => picture(lane, 'told')))
     const reads = held ? await Promise.all(lanes.map(lane => run(lane, 'read',
       `Do not click, type, reload or navigate: read the page exactly as it is now, including small error text next to form fields. ` +
-      `Store as 'told' the exact message the page shows about the result of the last save, or the word nothing if it shows none. Store as 'refused' the word yes if this is true, otherwise the word no: ${lane.user.refused}`))) : []
+      `Store exactly two variables, named told and refused. Store as 'told' the exact message the page shows about the result of the last save, or the word nothing if it shows none. Store as 'refused' the word yes if this is true, otherwise the word no: ${lane.user.refused}`))) : []
     // 3. After a reload, is each user's work really there?
     const look = 'Do not type, edit, save or submit anything; opening pages and following links to look is fine.'
     const checks = held ? await Promise.all(lanes.map(lane => run(lane, 'kept', `${look} Verify this, and fail if it is not true: ${lane.user.kept}`, lane.origin + (race.path || '/')))) : []
