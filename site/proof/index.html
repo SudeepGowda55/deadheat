@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--head-->
+</head>
+<body data-page="proof">
+<!--nav-->
+<main id="main">
+  <header class="page-head">
+    <h1 class="h1" data-head>Open the real reports.</h1>
+    <p class="lede" data-rise>One real run on 21 November 2026: 18 Kane CLI runs, 266 credits, about 12 minutes. Every report below is the single file Dead Heat wrote, with every screenshot inside it, exactly as it came out of the run.</p>
+  </header>
+
+  <section class="sec compare-sec" aria-labelledby="compare-h">
+    <div class="sec-head">
+      <h2 class="h2" id="compare-h" data-head>Same race, before and after the fix.</h2>
+      <p class="lede">Both saves released together. Drag the red line. On the left, Kanboard 1.2.58 as released: Manvith saw no warning and lost their description. On the right, after the agent’s second patch: Manvith’s stale save is refused with 409, and Sudeep’s is kept.</p>
+    </div>
+    <div class="compare" data-rise>
+      <img src="/reports/kanboard-fixed-report.png" alt="The Dead Heat report after the fix: Manvith was told no, refused and told so; Sudeep kept." width="1360" height="850" loading="lazy">
+      <div class="compare-top"><img src="/reports/kanboard-report.png" alt="The Dead Heat report for Kanboard 1.2.58: Manvith lost without a word, silently lost; Sudeep kept." width="1360" height="850"></div>
+      <div class="compare-line drag" role="slider" tabindex="0" aria-label="Compare before and after the fix" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"><i></i></div>
+      <span class="compare-tag compare-l">as released</span>
+      <span class="compare-tag compare-r">after the fix</span>
+    </div>
+  </section>
+
+  <section class="sec reports-sec" aria-labelledby="reports-h">
+    <div class="sec-head">
+      <h2 class="h2" id="reports-h" data-head>Scroll or drag through each run.</h2>
+      <p class="lede">The reports are interactive: choose an order, then scroll inside the frame or drag the white line to move time through the race. Each user’s Kane CLI action and check runs are linked inside the report.</p>
+    </div>
+    <div class="viewer plate">
+      <div class="viewer-bar">
+        <div class="seg" role="tablist" aria-label="Which report">
+          <button class="chip" role="tab" aria-selected="true" data-src="/reports/kanboard-report.html">Kanboard 1.2.58 as released</button>
+          <button class="chip" role="tab" aria-selected="false" data-src="/reports/kanboard-fixed-report.html">after the agent’s fix</button>
+        </div>
+        <a class="btn btn-ink viewer-open" href="/reports/kanboard-report.html" target="_blank" rel="noreferrer">Open in a new tab</a>
+      </div>
+      <div class="viewer-frame" data-lenis-prevent>
+        <iframe src="/reports/kanboard-report.html" title="Dead Heat report for Kanboard 1.2.58" loading="lazy"></iframe>
+      </div>
+    </div>
+    <figure class="still" data-rise>
+      <img src="/reports/kanboard-report.png" alt="Both Kanboard screens after a reload: Manvith silently lost, Sudeep kept, with the release line at 118.6 seconds." width="1360" height="850" loading="lazy">
+      <figcaption>The screenshot from the repository (<code>docs/kanboard-report.png</code>): both screens after a reload, one stamped silently lost.</figcaption>
+    </figure>
+  </section>
+
+  <section class="sec patch-sec" aria-labelledby="patch-h">
+    <div class="sec-head">
+      <h2 class="h2" id="patch-h" data-head>The agent’s patch, line by line.</h2>
+      <p class="lede">We handed the failure to a coding agent with <code>deadheat fix --with "splint {brief}"</code>, where <code>splint</code> is a small local wrapper around the agent. Dead Heat wrote the brief, the agent changed Kanboard, and Dead Heat restored the data, restarted the app and raced every order again.</p>
+    </div>
+    <ul class="patch-points">
+      <li data-rise>A hidden version number in the edit form.</li>
+      <li data-rise>One atomic “update only if the version is unchanged” statement.</li>
+      <li data-rise>A 409 with the message when it fails.</li>
+      <li data-rise>A unit test.</li>
+    </ul>
+    <div class="diff-wrap plate">
+      <div class="diff-bar"><span class="mono">examples/kanboard/agent-fix.diff</span><span class="mono diff-stat"></span><a class="btn" href="https://github.com/SudeepGowda55/deadheat/blob/main/examples/kanboard/agent-fix.diff" target="_blank" rel="noreferrer">On GitHub</a></div>
+      <pre class="diff" data-lenis-prevent tabindex="0" aria-label="The patch"><code></code></pre>
+    </div>
+    <div class="rounds-mini" data-rise>
+      <div><em class="v v-lost">0 of 3</em><span>Kanboard 1.2.58 as released: one person’s edit silently lost</span></div>
+      <div><em class="v">1 of 3</em><span>after the agent’s first patch</span></div>
+      <div><em class="v">3 of 3</em><span>after the agent’s second patch: the first save is kept, the stale one refused with 409 Conflict</span></div>
+    </div>
+  </section>
+
+  <section class="sec honest-sec" aria-labelledby="honest-h">
+    <div class="sec-head">
+      <h2 class="h2" id="honest-h" data-head>Getting there honestly.</h2>
+      <p class="lede">Getting a clean result that means something took some work on Dead Heat itself.</p>
+    </div>
+    <div class="honest">
+      <p data-rise>Kane CLI sometimes re-saved a user’s change after the race, which repaired the lost update before it could be checked, so Dead Heat now treats any save after the release as “cannot be judged”.</p>
+      <p data-rise>Kane CLI also sometimes missed the small red refusal text that the screenshots show, so a 409 answer now counts as a refusal unless the page told the user the save had worked.</p>
+      <p data-rise>Users reported this Kanboard behaviour in <a href="https://github.com/kanboard/kanboard/issues/2741" target="_blank" rel="noreferrer">kanboard#2741</a> and <a href="https://github.com/kanboard/kanboard/issues/944" target="_blank" rel="noreferrer">kanboard#944</a>; both issues were closed without a fix, and the current release still behaves the same way. The setup script and race file are in <a href="https://github.com/SudeepGowda55/deadheat/tree/main/examples/kanboard" target="_blank" rel="noreferrer">examples/kanboard</a>, so the result can be reproduced.</p>
+    </div>
+  </section>
+</main>
+<!--foot-->
+<script type="module" src="/src/proof.js"></script>
+</body>
+</html>
